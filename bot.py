@@ -1,7 +1,8 @@
 import discord
 from dotenv import load_dotenv
 import os
-from commands import handle_rank_command, handle_insult, check_and_reset_mentions
+from discord.ext import commands
+from commands import handle_rank_command, auto_handle_insult, check_and_reset_mentions
 
 load_dotenv()
 
@@ -10,22 +11,23 @@ TOKEN = os.getenv("BOT_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix="/!", intents=intents)
 
-@client.event
+@bot.event
 async def on_ready():
-    print(f'Logged in as {client.user}')
+    print(f'Logged in as {bot.user}')
 
-@client.event
+@bot.event
 async def on_message(message):
-    if message.author == client.user:
+    if message.author == bot.user:
         return
+    await auto_handle_insult(message)
+    await bot.process_commands(message)
 
-    if message.content == "!rank":
-        await handle_rank_command(client, message)
-    else:
-        await handle_insult(client, message)
+@bot.command()
+async def rank(ctx):
+    await handle_rank_command(ctx)
 
 def run_bot():
     check_and_reset_mentions()
-    client.run(TOKEN)
+    bot.run(TOKEN)

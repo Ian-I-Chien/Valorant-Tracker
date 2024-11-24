@@ -12,7 +12,7 @@ user_data = load_json(USER_DATA_FILE)
 
 def check_and_reset_mentions():
     current_date = datetime.now().strftime('%Y-%m-%d')
-    
+
     if "last_reset_date" not in constants:
         constants["last_reset_date"] = current_date
         save_json(CONSTANTS_FILE, constants)
@@ -24,14 +24,12 @@ def check_and_reset_mentions():
         constants["last_reset_date"] = current_date
         save_json(CONSTANTS_FILE, constants)
 
-
 def reset_daily_mentions():
     current_date = datetime.now().strftime('%Y-%m-%d')
     for user_name, user_info in user_data.items():
         user_info['mentions'] = 0 
         user_info['last_reset_date'] = current_date
     save_json(USER_DATA_FILE, user_data)
-
 
 def build_rank_message(sorted_users):
     if not sorted_users:
@@ -50,7 +48,7 @@ def build_rank_message(sorted_users):
 
     return rank_message
 
-async def handle_rank_command(client, message):
+async def handle_rank_command(ctx):
     sorted_users = sorted(
         (
             (user_name, {**user_info, "display_name": user_info.get("display_name", user_info["name"])})
@@ -62,9 +60,9 @@ async def handle_rank_command(client, message):
     )
 
     ranking_message = build_rank_message(sorted_users)
-    await message.channel.send(ranking_message)
+    await ctx.send(ranking_message)
 
-async def handle_insult(client, message):
+async def auto_handle_insult(message):
     user_name = message.author.name
     current_date = datetime.now().strftime('%Y-%m-%d')
 
