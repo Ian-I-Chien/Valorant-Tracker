@@ -1,7 +1,7 @@
 import discord
 from dotenv import load_dotenv
 import os
-from commands import handle_rank_command, handle_insult
+from commands import handle_rank_command, handle_insult, check_and_reset_mentions
 
 load_dotenv()
 
@@ -27,4 +27,5 @@ async def on_message(message):
         await handle_insult(client, message)
 
 def run_bot():
+    check_and_reset_mentions()
     client.run(TOKEN)
