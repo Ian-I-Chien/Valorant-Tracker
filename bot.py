@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from discord.ext import commands
 from discord import app_commands
-from commands import handle_rank_command, auto_handle_insult, check_and_reset_mentions
+from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
 
 load_dotenv()
 
@@ -35,6 +35,7 @@ async def rank(interaction: discord.Interaction):
 async def on_message(message):
     if message.author == bot.user:
         return
+    await auto_handle_praise(message)
     await auto_handle_insult(message)
     await bot.process_commands(message)
 
