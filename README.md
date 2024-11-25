@@ -23,9 +23,46 @@ python3 main.py
 ```
 
 
-## Bot commands:
+## Bot Usage Example
+To use the bot, simply type the following commands in your Discord server where the bot is active:
+
+### Insult a User:
 ```
-/!rank
+user toxic
+```
+This command will track when a user insults someone, and the bot will increment the "insult mentions" count for that user. The bot will also respond with a message letting the user know how many times they've been "insulted".
+
+### Praise a User:
+```
+user awesome
+```
+Similarly, this command tracks when a user praises someone, and it increments the "praise mentions" count. The bot will respond with a message showing how many times they've been "praised".
+
+## Rank Commands
+The bot also provides ranking for both insults and praises. You can use the following slash commands:
+```
+/rank
+```
+Displays the top users with the most insults and praises in your server. It will show two rankings:
+Insult Rank - The top users who insult the most.
+Praise Rank - The top users who praise the most.
+
+## Example Output:
+```
+Insult Rank:
+Congrats! [User123] Total Insult: 15 times.
+You're going straight to hell.
+
+1. User456 - 10 times
+2. User789 - 5 times
+
+Praise Rank:
+Congrats! [User456] Total Praise: 20 times.
+You're going to heaven!
+
+1. User123 - 15 times
+2. User789 - 5 times
+
 ```
 
 ## Tree:
