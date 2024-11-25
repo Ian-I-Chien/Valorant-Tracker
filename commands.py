@@ -1,3 +1,4 @@
+import discord
 from file_manager import load_json, save_json
 from datetime import datetime
 
@@ -65,7 +66,7 @@ def build_rank_message(sorted_users):
 
     return rank_message
 
-async def handle_rank_command(ctx):
+async def handle_rank_command(interaction: discord.Interaction):
     sorted_users = sorted(
         (
             (user_name, {**user_info, "display_name": user_info.get("display_name", user_info["name"])})
@@ -77,9 +78,9 @@ async def handle_rank_command(ctx):
     )
 
     ranking_message = build_rank_message(sorted_users)
-    await ctx.send(ranking_message)
+    await interaction.response.send_message(ranking_message)
 
-async def auto_handle_insult(message):
+async def auto_handle_insult(message: discord.Message):
     user_name = message.author.name
     current_date = datetime.now().strftime('%Y-%m-%d')
 
@@ -97,11 +98,7 @@ async def auto_handle_insult(message):
         else:
             user_data[user_name]['display_name'] = message.author.display_name
             user_data[user_name]['mentions'] += 1
-
-            if 'history_mentions' not in user_data[user_name]:
-                user_data[user_name]['history_mentions'] = 0
-            user_data[user_name]['history_mentions'] += 1
-
+            user_data[user_name]['history_mentions'] = user_data[user_name].get('history_mentions', 0) + 1
             user_data[user_name]['last_reset_date'] = user_data[user_name].get('last_reset_date', current_date)
 
         save_json(USER_DATA_FILE, user_data)
