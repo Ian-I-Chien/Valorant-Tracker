@@ -4,11 +4,27 @@ from datetime import datetime
 CONSTANTS_FILE = 'config/constants.json'
 USER_DATA_FILE = 'data/user_data.json'
 
-constants = load_json(CONSTANTS_FILE)
+default_constants = {
+    "target_keywords": ["user_name"],
+    "insult_keywords": ["toxic"],
+    "last_reset_date": "1970-01-01"
+}
+
+default_user_data = {
+    "example_user": {
+        "name": "example_user",
+        "display_name": "Example User",
+        "mentions": 0,
+        "history_mentions": 0,
+        "last_reset_date": "1970-01-01"
+    }
+}
+
+constants = load_json(CONSTANTS_FILE, default_constants)
 TARGET_KEYWORDS = constants["target_keywords"]
 INSULT_KEYWORDS = constants["insult_keywords"]
 
-user_data = load_json(USER_DATA_FILE)
+user_data = load_json(USER_DATA_FILE, default_user_data)
 
 def check_and_reset_mentions():
     current_date = datetime.now().strftime('%Y-%m-%d')
@@ -27,7 +43,7 @@ def check_and_reset_mentions():
 def reset_daily_mentions():
     current_date = datetime.now().strftime('%Y-%m-%d')
     for user_name, user_info in user_data.items():
-        user_info['mentions'] = 0 
+        user_info['mentions'] = 0
         user_info['last_reset_date'] = current_date
     save_json(USER_DATA_FILE, user_data)
 
@@ -38,7 +54,8 @@ def build_rank_message(sorted_users):
     top_user_name, top_user_info = sorted_users[0]
     rank_message = (
         f"歷史排名：\n"
-        f"恭喜臭臭人 [ {top_user_info['display_name']} ({top_user_info['name']}) ] 總共臭了 {top_user_info['history_mentions']} 次！\n"
+        f"恭喜臭臭人 [ {top_user_info['display_name']} ({top_user_info['name']}) ] "
+        f"總共臭了 {top_user_info['history_mentions']} 次！\n"
         "你是真會下地獄 ==\n"
         "請聯繫管理員繳交贖罪券 (支援轉帳, 街口, LinePay) 1000$\n\n"
     )
