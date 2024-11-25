@@ -50,7 +50,7 @@ def reset_daily_mentions():
 
 def build_rank_message(sorted_users):
     if not sorted_users:
-        return "沒人臭他QQ你們都會上天堂<3"
+        return "沒人嘴臭QQ你們都會上天堂<3"
 
     top_user_name, top_user_info = sorted_users[0]
     rank_message = (
@@ -105,5 +105,5 @@ async def auto_handle_insult(message: discord.Message):
 
         mentions_count = user_data[user_name]['mentions']
         user_nick_name = user_data[user_name]['name']
-        response_message = f"{message.author.display_name} ({user_nick_name})\n今天臭修哥的次數: {mentions_count}"
+        response_message = f"{message.author.display_name} ({user_nick_name})\n今天臭人的次數: {mentions_count}"
         await message.channel.send(response_message)
