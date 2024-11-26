@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 from discord.ext import commands
 from discord import app_commands
+from valorant import get_player_info_via_api
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
 
 load_dotenv()
@@ -30,6 +31,22 @@ async def on_ready():
 @bot.tree.command(name="rank", description="Historical Ranking")
 async def rank(interaction: discord.Interaction):
     await handle_rank_command(interaction)
+
+@bot.tree.command(name="info", description="Player Information")
+async def info(interaction: discord.Interaction, player_full_name: str):
+    try:
+        player_name, player_tag = player_full_name.split('#')
+    except ValueError:
+        await interaction.response.send_message("Wrong Format")
+        return
+    await interaction.response.send_message("Fetching player data... Please wait.")
+
+    player_data = await get_player_info_via_api(player_name, player_tag)
+    if isinstance(player_data, dict) and "error" in player_data:
+        await interaction.followup.send(player_data["error"], ephemeral=True)
+        return
+
+    await interaction.followup.send(embed=player_data)
 
 @bot.event
 async def on_message(message):
