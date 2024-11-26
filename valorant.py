@@ -86,7 +86,7 @@ async def get_player_info_via_api(player_name, player_tag):
         f"Name: {account_data['name']}#{account_data['tag']}\n"
         f"Region: {account_data['region']}\n"
         f"Account Level: {account_data['account_level']}\n"
-        f"Ave. headshot ratio (100 Games): {average_headshot_ratio}%\n"
+        f"Avg. HS Rate (100 Games): {average_headshot_ratio}%\n"
 
         f"### Rank Info:\n"
         f"Rank: {rank_data['currenttierpatched']}\n"
