@@ -25,8 +25,8 @@ async def get_average_headshot_ratio(player_name, player_tag):
     response = requests.get(url, headers=headers)
 
     if response.status_code == API_SUCCESS:
-        results = []
-        num_matches = 0
+        highest_ratio = -1
+        lowest_ratio = 101
         total_head = 0
         total_shots = 0
         matches = response.json().get("data", [])
@@ -37,11 +37,17 @@ async def get_average_headshot_ratio(player_name, player_tag):
             head = shots["head"]
             body = shots["body"]
             leg = shots["leg"]
+            total_shots_in_match = head + body + leg
+
             total_head += head
-            total_shots += (head + body + leg)
+            total_shots += total_shots_in_match
+            if  total_shots_in_match > 0:
+                headshot_ratio_each_match = (head / total_shots_in_match) * 100
+                highest_ratio = max(highest_ratio, headshot_ratio_each_match)
+                lowest_ratio = min(lowest_ratio, headshot_ratio_each_match)
         if total_shots > 0:
             average_headshot_ratio = (total_head / total_shots) * 100
-            return round(average_headshot_ratio, 2)
+            return round(average_headshot_ratio, 2), round(highest_ratio, 2), round(lowest_ratio, 2)
         else:
             return None
     else:
@@ -75,7 +81,7 @@ async def get_player_info_via_api(player_name, player_tag):
     if rank_data is None:
         return {"error": "Unable to fetch rank data."}
     
-    average_headshot_ratio = await get_average_headshot_ratio(player_name, player_tag)
+    average_headshot_ratio, highest_ratio, lowest_ratio = await get_average_headshot_ratio(player_name, player_tag)
     if average_headshot_ratio is None:
         return {"error": "Unable to fetch headshot ratio."}
 
@@ -86,6 +92,8 @@ async def get_player_info_via_api(player_name, player_tag):
         f"Name: {account_data['name']}#{account_data['tag']}\n"
         f"Region: {account_data['region']}\n"
         f"Account Level: {account_data['account_level']}\n"
+        f"Highest HS Rate: {highest_ratio}%\n"
+        f"Lowest HS Rate: {lowest_ratio}%\n"
         f"Avg. HS Rate (100 Games): {average_headshot_ratio}%\n"
 
         f"### Rank Info:\n"
