@@ -1,15 +1,6 @@
 from tortoise import fields
-from tortoise.models import Model
 from database.const import ChatType
-
-
-class BaseModel(Model):
-    class Meta:
-        abstract = True
-
-    def to_dict(self):
-        return {field: getattr(self, field) for field in self._meta.fields_map if field not in ['sent_messages',
-                                                                                                'received_messages']}
+from database.database import BaseModel
 
 
 class UserInfo(BaseModel):
@@ -17,7 +8,7 @@ class UserInfo(BaseModel):
         table = "user_info"
 
     account = fields.CharField(max_length=255, unique=True)
-    volorant_account = fields.CharField(max_length=255, default=None, null=True)
+    valorant_account = fields.CharField(max_length=255, default=None, null=True)
     display_name = fields.CharField(max_length=255, null=True)
     keyword = fields.JSONField(null=True)
 

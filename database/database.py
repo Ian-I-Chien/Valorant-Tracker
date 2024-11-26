@@ -1,6 +1,8 @@
+import abc
 import os
+from typing import Type
 
-from tortoise import Tortoise
+from tortoise import Tortoise, Model
 
 
 def get_dp_path(server_name='default'):
@@ -25,3 +27,25 @@ async def db_close():
     Close the database connections
     """
     await Tortoise.close_connections()
+
+
+class BaseModel(Model):
+    class Meta:
+        abstract = True
+
+    def to_dict(self):
+        return {field: getattr(self, field) for field in self._meta.fields_map if field not in ['sent_messages',
+                                                                                                'received_messages']}
+
+
+@abc.abstractmethod
+class BaseOrm:
+    def __init__(self, model: Type[BaseModel]):
+        self._model: Type[BaseModel] = model
+
+    async def __aenter__(self):
+        await db_init()
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await db_close()
