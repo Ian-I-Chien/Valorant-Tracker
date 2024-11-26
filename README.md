@@ -72,6 +72,11 @@ Bully/
 │   └── constants.json
 ├── data/
 │   └── user_data.json
+├── database/
+│   └── const.py
+│   └── database.py
+│   └── models.py
+│   └── model_orm.py
 ├── main.py
 ├── bot.py
 ├── commands.py
