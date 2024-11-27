@@ -1,5 +1,12 @@
+from dataclasses import dataclass
 from transformers import pipeline
 from deep_translator import GoogleTranslator
+
+@dataclass
+class ToxicDetectorResult:
+    text: str
+    label: str
+    score: float    
 
 class ToxicDetector:
     def __init__(self) -> None:
@@ -9,10 +16,8 @@ class ToxicDetector:
     def google_translate(self, text: str) -> str:
         return GoogleTranslator(source='auto', target='en').translate(text)
     
-    def detect(self, text: str):
+    def detect(self, text: str) -> ToxicDetectorResult:
         result: dict = self.classifier(text)[0]
         result_label = result.get("label", 'Positive')
         reuslt_score = result.get("score", 0)
-        if result_label == "Negative" and reuslt_score > 0.75:
-            return True
-        return False
+        return ToxicDetectorResult(text=text, label=result_label, score=reuslt_score)
