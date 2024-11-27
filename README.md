@@ -86,6 +86,11 @@ Bully/
 │   └── model_orm.py
 ├── model/
 │   └── toxic_detector.py
+├── valorant/
+│   └── __init__.py
+│   └── api.py
+│   └── player.py
+│   └── match_stats.py
 ├── main.py
 ├── bot.py
 ├── commands.py
