@@ -4,7 +4,7 @@ from nlp import nlp_process
 import os
 from discord.ext import commands
 from discord import app_commands
-from valorant import get_player_info_via_api
+from valorant.player import ValorantPlayer
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
 
 load_dotenv()
@@ -40,14 +40,17 @@ async def info(interaction: discord.Interaction, player_full_name: str):
     except ValueError:
         await interaction.response.send_message("Wrong Format")
         return
+
     await interaction.response.send_message("Fetching player data... Please wait.")
 
-    player_data = await get_player_info_via_api(player_name, player_tag)
-    if isinstance(player_data, dict) and "error" in player_data:
-        await interaction.followup.send(player_data["error"], ephemeral=True)
+    player = ValorantPlayer(player_name, player_tag)
+    player_info = await player.get_player_info()
+
+    if isinstance(player_info, dict) and "error" in player_info:
+        await interaction.followup.send(player_info["error"], ephemeral=True)
         return
 
-    await interaction.followup.send(embed=player_data)
+    await interaction.followup.send(embed=player_info)
 
 @bot.event
 async def on_message(message):
