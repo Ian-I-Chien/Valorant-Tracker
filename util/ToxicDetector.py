@@ -10,8 +10,9 @@ class ToxicDetector:
         return GoogleTranslator(source='auto', target='en').translate(text)
     
     def detect(self, text: str):
-        # text = self.google_translate(text=text)
         result: dict = self.classifier(text)[0]
-        if result.get("score", 0) > 0.5:
+        result_label = result.get("label", 'Positive')
+        reuslt_score = result.get("score", 0)
+        if result_label == "Negative" and reuslt_score > 0.75:
             return True
         return False
