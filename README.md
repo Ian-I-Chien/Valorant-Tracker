@@ -84,6 +84,8 @@ Bully/
 │   └── database.py
 │   └── models.py
 │   └── model_orm.py
+├── model/
+│   └── toxic_detector.py
 ├── main.py
 ├── bot.py
 ├── commands.py

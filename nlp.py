@@ -1,5 +1,5 @@
 import discord
-from util.ToxicDetector import ToxicDetector
+from model.toxic_detector import ToxicDetector
 
 toxic_detector: ToxicDetector = None
 
