@@ -1,5 +1,6 @@
 import discord
 from dotenv import load_dotenv
+from nlp import nlp_process
 import os
 from discord.ext import commands
 from discord import app_commands
@@ -52,6 +53,7 @@ async def info(interaction: discord.Interaction, player_full_name: str):
 async def on_message(message):
     if message.author == bot.user:
         return
+    await nlp_process(message)
     await auto_handle_praise(message)
     await auto_handle_insult(message)
     await bot.process_commands(message)
