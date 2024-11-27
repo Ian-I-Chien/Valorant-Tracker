@@ -26,9 +26,9 @@ python3 main.py
 ```
 /info Valorant-User-Name#User-Tage
 ```
-Output:
-![image](https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png)
-
+<p>
+    <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
+</p>
 
 ## Bot Usage Example
 To use the bot, simply type the following commands in your Discord server where the bot is active:
