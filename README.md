@@ -7,12 +7,12 @@ It aims to foster a healthier and more respectful gaming environment by tracking
 Currently, it can only track mentions of specific users, but in the future, we hope to allow each user to have their own individual mention count.
 We calculate both daily and historical counts, and use the historical counts for rankings. The daily count is reset at the start of each day.
 
-In the future, we plan to integrate the [Valorant API](https://valorant-api.com) so that the bot can also check personal stats and other related information.
+In the future, we plan to integrate the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
 
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
-Needs to set a [Discord Token](https://discord.com/developers/docs/quick-start/getting-started) of discord which is set in .env file
+[Discord Token](https://discord.com/developers/docs/quick-start/getting-started) must be set in .env file
 ```
 BOT_TOKEN= "TOKEN"
 ```
@@ -21,6 +21,13 @@ To run the Bot:
 ```
 python3 main.py
 ```
+
+## Bot Commands on Discord
+```
+/info Valorant-User-Name#User-Tage
+```
+Output:
+![image](https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png)
 
 
 ## Bot Usage Example
@@ -81,6 +88,7 @@ Bully/
 ├── bot.py
 ├── commands.py
 ├── file_manager.py
+├── valorant.py
 ├── .env
 ├── requirements.txt
 ```
