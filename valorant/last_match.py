@@ -18,7 +18,7 @@ class LastMatch:
         formatted_info = ""
         for index, player in enumerate(sorted_players):
             formatted_info += (
-                f"**[{player['team'][0]}],**\t"
+                f"**[{player['team'][0]}]{[player['currenttier_patched']]},**\t"
                 f"**{player['name']}#{player['tag']},**\t"
                 f"**{player['character']},**\t"
                 f"**{player['stats']['score']}**\n"
