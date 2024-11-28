@@ -16,6 +16,7 @@ class ToxicMessageProcessor:
     def init_nlp_model(self):
         """Initial NLP Model"""        
         self.classifier = pipeline(task="text-classification", model=self.model_name, tokenizer=self.model_name)
+        self.detect("Init Detect")
     
     def google_translate(self, text: str) -> str:
         return GoogleTranslator(source='auto', target='en').translate(text)
