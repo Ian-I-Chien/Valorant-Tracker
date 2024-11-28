@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import asyncio
 import discord
 from .api import fetch_json, url_json
@@ -17,14 +18,15 @@ class LastMatch:
         total_players = len(sorted_players)
         formatted_info = ""
         for index, player in enumerate(sorted_players):
+            score = math.floor(player['stats']['score'] / self.last_match_data['data']['metadata']['rounds_played'])
             formatted_info += (
-                f"**[{player['team'][0]}]{[player['currenttier_patched']]},**\t"
-                f"**{player['name']}#{player['tag']},**\t"
-                f"**{player['character']},**\t"
-                f"**{player['stats']['score']}**\n"
+                f"**[{player['team'][0]}]{[player['currenttier_patched']]}**\t"
+                f"**[{player['name']}#{player['tag']}]**\t"
+                f"**[{player['character']}]**\t"
+                f"**[{score}]**\n"
             )
 
-        embed = discord.Embed(title="Player Leaderboard", color=discord.Color.blurple())
+        embed = discord.Embed(title="Player Leaderboard of Last Match", color=discord.Color.blurple())
         embed.description = formatted_info
         return embed
 
