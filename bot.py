@@ -8,6 +8,7 @@ from valorant.last_match import LastMatch
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
+from nlp import init_nlp_model
 
 load_dotenv()
 
@@ -79,4 +80,5 @@ async def on_message(message):
 
 def run_bot():
     check_and_reset_mentions()
+    init_nlp_model()
     bot.run(TOKEN)
