@@ -1,6 +1,5 @@
 import os
 import discord
-from nlp import nlp_process
 from dotenv import load_dotenv
 from discord.ext import commands
 from discord import app_commands
@@ -8,11 +7,13 @@ from valorant.last_match import LastMatch
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
-from nlp import init_nlp_model
+from model.toxic_detector import ToxicMessageProcessor
 
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
+
+toxic_message_processor = ToxicMessageProcessor()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -72,7 +73,7 @@ async def lastmatch(interaction: discord.Interaction,  player_full_name: str):
 async def on_message(message):
     if message.author == bot.user:
         return
-    await nlp_process(message)
+    await toxic_message_processor.nlp_process(message)
     await auto_handle_praise(message)
     await auto_handle_insult(message)
     await bot.process_commands(message)
@@ -80,5 +81,5 @@ async def on_message(message):
 
 def run_bot():
     check_and_reset_mentions()
-    init_nlp_model()
+    toxic_message_processor.init_nlp_model() # Initail NLP model
     bot.run(TOKEN)
