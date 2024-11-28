@@ -1,10 +1,12 @@
-import discord
-from dotenv import load_dotenv
-from nlp import nlp_process
 import os
+import discord
+from nlp import nlp_process
+from dotenv import load_dotenv
 from discord.ext import commands
 from discord import app_commands
+from valorant.last_match import LastMatch
 from valorant.player import ValorantPlayer
+from utils import parse_player_name
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
 
 load_dotenv()
@@ -15,6 +17,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="/", intents=intents)
+
 
 @bot.event
 async def on_ready():
@@ -33,15 +36,11 @@ async def on_ready():
 async def rank(interaction: discord.Interaction):
     await handle_rank_command(interaction)
 
+
 @bot.tree.command(name="info", description="Player Information")
 async def info(interaction: discord.Interaction, player_full_name: str):
-    try:
-        player_name, player_tag = player_full_name.split('#')
-    except ValueError:
-        await interaction.response.send_message("Wrong Format")
-        return
-
-    await interaction.response.send_message("Fetching player data... Please wait.")
+    player_name, player_tag = await parse_player_name(interaction, player_full_name)
+    if not player_name or not player_tag: return
 
     player = ValorantPlayer(player_name, player_tag)
     player_info = await player.get_player_info()
@@ -52,6 +51,22 @@ async def info(interaction: discord.Interaction, player_full_name: str):
 
     await interaction.followup.send(embed=player_info)
 
+
+@bot.tree.command(name="lm", description="Last Match Information")
+async def lastmatch(interaction: discord.Interaction,  player_full_name: str):
+    player_name, player_tag = await parse_player_name(interaction, player_full_name)
+    if not player_name or not player_tag: return
+
+    player_last_match = LastMatch(player_name, player_tag)
+    last_match = await player_last_match.get_last_match()
+
+    if not last_match:
+        await interaction.followup.send("No match data found.", ephemeral=True)
+        return
+
+    await interaction.followup.send(embed=last_match)
+
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -60,6 +75,7 @@ async def on_message(message):
     await auto_handle_praise(message)
     await auto_handle_insult(message)
     await bot.process_commands(message)
+
 
 def run_bot():
     check_and_reset_mentions()
