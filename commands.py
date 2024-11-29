@@ -188,10 +188,7 @@ async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessage
             embed_color = 0xbc4749
 
         embed = discord.Embed(title="NLP Processor",
-                      description=f"你的訊息 {message.content} 被檢測為{message_type}",
+                      description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
                       colour=embed_color)
         embed.set_author(name="NoMoreBully")
-        embed.add_field(name="Raw Data",
-                value=f"{nlp_result}",
-                inline=False)
         await message.channel.send(embed=embed)

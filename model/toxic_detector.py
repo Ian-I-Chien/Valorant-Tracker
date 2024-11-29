@@ -29,5 +29,5 @@ class ToxicMessageProcessor:
     
     async def nlp_process(self, message: discord.Message):
         result: ToxicDetectorResult = self.detect(message.content)
-        print(message.content, result)
+        print(message.author.display_name, message.content, result)
         return result
