@@ -22,6 +22,10 @@ To run the Bot:
 python3 main.py
 ```
 
+
+## Bot Usage Example
+To use the bot, simply type the following commands in your Discord server where the bot is active:
+
 ## Bot Commands on Discord
 ```
 /info Valorant-User-Name#User-Tage
@@ -30,8 +34,15 @@ python3 main.py
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
 </p>
 
-## Bot Usage Example
-To use the bot, simply type the following commands in your Discord server where the bot is active:
+## Bot Commands on Discord
+```
+/lm Valorant-User-Name#User-Tage
+```
+<p>
+    <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/lm_output_example.png" alt="Output Example" width="300"/>
+</p>
+
+
 
 ### Insult a User:
 ```
