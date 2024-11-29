@@ -1,6 +1,7 @@
 import discord
 from file_manager import load_json, save_json
 from datetime import datetime
+from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
 
 CONSTANTS_FILE = 'config/constants.json'
 USER_DATA_FILE = 'data/user_data.json'
@@ -175,3 +176,22 @@ async def auto_handle_praise(message: discord.Message):
         praise_count = user_data[user_name].get('praise_mentions', 0)
         response_message = f"{message.author.display_name} ({user_data[user_name]['name']})\nPRAISE: {praise_count}"
         await message.channel.send(response_message)
+
+async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessageProcessor):
+    nlp_result: ToxicDetectorResult = await nlp_processor.nlp_process(message)
+    if nlp_result.score >= 0.9:
+        if nlp_result.label == "Positive":
+            message_type = "正面言論"
+            embed_color = 0xa7c957
+        else:
+            message_type = "負面言論"
+            embed_color = 0xbc4749
+
+        embed = discord.Embed(title="NLP Processor",
+                      description=f"你的訊息 {message.content} 被檢測為{message_type}",
+                      colour=embed_color)
+        embed.set_author(name="NoMoreBully")
+        embed.add_field(name="Raw Data",
+                value=f"{nlp_result}",
+                inline=False)
+        await message.channel.send(embed=embed)

@@ -6,7 +6,7 @@ from discord import app_commands
 from valorant.last_match import LastMatch
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
-from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions
+from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions, auto_nlp_process
 from model.toxic_detector import ToxicMessageProcessor
 
 load_dotenv()
@@ -73,7 +73,7 @@ async def lastmatch(interaction: discord.Interaction,  player_full_name: str):
 async def on_message(message):
     if message.author == bot.user:
         return
-    await toxic_message_processor.nlp_process(message)
+    await auto_nlp_process(message, toxic_message_processor)
     await auto_handle_praise(message)
     await auto_handle_insult(message)
     await bot.process_commands(message)
