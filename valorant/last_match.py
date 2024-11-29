@@ -19,14 +19,25 @@ class LastMatch:
         formatted_info = ""
         for index, player in enumerate(sorted_players):
             score = math.floor(player['stats']['score'] / self.last_match_data['data']['metadata']['rounds_played'])
-            formatted_info += (
-                f"**[{player['team'][0]}]{[player['currenttier_patched']]}**\t"
-                f"**[{player['name']}#{player['tag']}]**\t"
-                f"**[{player['character']}]**\t"
-                f"**[{score}]**\n"
+            total_shots = player['stats']['bodyshots'] + player['stats']['headshots'] + player['stats']['legshots']
+            headshot_percentage = (player['stats']['headshots'] / total_shots) * 100 if total_shots > 0 else 0
+            
+            formatted_info += "`{}`\n".format(
+                f"[{player['team'][0]}] [{player['currenttier_patched']}] "
+                f"[{player['name']}#{player['tag']}] "
             )
 
-        embed = discord.Embed(title="Player Leaderboard of Last Match", color=discord.Color.blurple())
+            formatted_info += "`{}`\n".format(
+                f"{player['character']} "
+                f"{player['stats']['kills']}/{player['stats']['deaths']}/{player['stats']['assists']} "
+                f"[{headshot_percentage:.2f}%]"
+                f"[{score}]"
+            )
+        title_info = "{}".format(
+            f"Player LeaderBoard of Last Match\n"
+            f"{self.last_match_data['data']['metadata']['mode']}"
+        )
+        embed = discord.Embed(title=title_info, color=discord.Color.blurple())
         embed.description = formatted_info
         return embed
 
