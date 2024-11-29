@@ -75,7 +75,8 @@ class LastMatch:
         )
 
         title_info = "{}".format(
-            f"Last Match\n"
+            f"Last Match\t"
+            f"{self.last_match_data['data']['metadata']['map']}\n"
             f"{self.last_match_data['data']['metadata']['mode']}\t"
             f"{winning_team} WIN!\t"
             f"[{ratio}]"
