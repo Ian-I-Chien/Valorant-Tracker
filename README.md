@@ -12,9 +12,14 @@ In the future, we plan to integrate the [Valorant API from Henrik-3](https://git
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
-[Discord Token](https://discord.com/developers/docs/quick-start/getting-started) must be set in .env file
+The Token should be set in .env file
+[Discord Token](https://discord.com/developers/docs/quick-start/getting-started)
 ```
 BOT_TOKEN= "TOKEN"
+```
+
+[API_Token](https://github.com/Henrik-3/unofficial-valorant-api)
+API_TOKEN= "API_TOKEN"
 ```
 
 To run the Bot:
