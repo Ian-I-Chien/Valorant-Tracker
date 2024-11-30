@@ -65,6 +65,9 @@ class LastMatch:
                     f"[{rank_in_tier}/99] "
                     f" [{mmr_change:+d}]"
                 )
+            
+            await asyncio.sleep(0.3)
+            
 
         blue_wins = self.last_match_data['data']['teams']['blue']['rounds_won']
         red_wins = self.last_match_data['data']['teams']['red']['rounds_won']
