@@ -6,7 +6,8 @@ from discord import app_commands
 from valorant.last_match import LastMatch
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
-from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions, auto_nlp_process
+from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions, \
+    auto_nlp_process, registered_with_valorant_account
 from model.toxic_detector import ToxicMessageProcessor
 
 load_dotenv()
@@ -55,7 +56,7 @@ async def info(interaction: discord.Interaction, player_full_name: str):
 
 
 @bot.tree.command(name="lm", description="Last Match Information")
-async def lastmatch(interaction: discord.Interaction,  player_full_name: str):
+async def lastmatch(interaction: discord.Interaction, player_full_name: str):
     player_name, player_tag = await parse_player_name(interaction, player_full_name)
     if not player_name or not player_tag: return
 
@@ -67,6 +68,12 @@ async def lastmatch(interaction: discord.Interaction,  player_full_name: str):
         return
 
     await interaction.followup.send(embed=last_match)
+
+
+@bot.tree.command(name="reg_val", description="Registered Self discord account with valorant account.")
+@app_commands.describe(valorant_account="valorant account with hashtag. ex:user#1234")
+async def reg_val(interaction: discord.Interaction, valorant_account: str):
+    await registered_with_valorant_account(interaction, valorant_account)
 
 
 @bot.event

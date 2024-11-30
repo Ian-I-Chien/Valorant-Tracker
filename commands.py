@@ -1,4 +1,6 @@
 import discord
+from tortoise.exceptions import IntegrityError
+from database.model_orm import UserOrm
 from file_manager import load_json, save_json
 from datetime import datetime
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
@@ -24,7 +26,6 @@ default_user_data = {
         "last_reset_date": "1970-01-01"
     }
 }
-
 
 constants = load_json(CONSTANTS_FILE, default_constants)
 TARGET_KEYWORDS = constants["target_keywords"]
@@ -98,7 +99,7 @@ def build_rank_message(sorted_users, rank_type):
             "message": "You're going to heaven!"
         }
     }
-    
+
     if rank_type not in rank_data:
         return "Invalid rank type."
 
@@ -139,7 +140,8 @@ async def auto_handle_insult(message: discord.Message):
                 }
             else:
                 user_data[user_name]['insult_mentions'] = user_data[user_name].get('insult_mentions', 0) + 1
-                user_data[user_name]['history_insult_mentions'] = user_data[user_name].get('history_insult_mentions', 0) + 1
+                user_data[user_name]['history_insult_mentions'] = user_data[user_name].get('history_insult_mentions',
+                                                                                           0) + 1
                 user_data[user_name]['last_reset_date'] = user_data[user_name].get('last_reset_date', current_date)
 
             save_json(USER_DATA_FILE, user_data)
@@ -154,7 +156,7 @@ async def auto_handle_praise(message: discord.Message):
     current_date = datetime.now().strftime('%Y-%m-%d')
 
     if any(keyword.lower() in message.content.lower() for keyword in TARGET_KEYWORDS) and \
-       any(praise in message.content.lower() for praise in constants.get("praise_keywords", [])):
+            any(praise in message.content.lower() for praise in constants.get("praise_keywords", [])):
 
         if user_name not in user_data:
             user_data[user_name] = {
@@ -177,6 +179,7 @@ async def auto_handle_praise(message: discord.Message):
         response_message = f"{message.author.display_name} ({user_data[user_name]['name']})\nPRAISE: {praise_count}"
         await message.channel.send(response_message)
 
+
 async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessageProcessor):
     nlp_result: ToxicDetectorResult = await nlp_processor.nlp_process(message)
     if nlp_result.score >= 0.9:
@@ -188,7 +191,26 @@ async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessage
             embed_color = 0xbc4749
 
         embed = discord.Embed(title="NLP Processor",
-                      description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
-                      colour=embed_color)
+                              description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
+                              colour=embed_color)
         embed.set_author(name="NoMoreBully")
         await message.channel.send(embed=embed)
+
+
+async def registered_with_valorant_account(interaction: discord.Interaction, valorant_account):
+    dc_id = interaction.user.id
+    dc_global_name = interaction.user.global_name
+    dc_display_name = interaction.user.display_name
+    val_account = valorant_account.replace(" ", "")
+    async with UserOrm() as user_model:
+        try:
+            await user_model.register_user(dc_id=dc_id,
+                                           dc_global_name=dc_global_name,
+                                           dc_display_name=dc_display_name,
+                                           val_account=val_account)
+            await interaction.response.send_message(
+                f"{dc_display_name} **registered** valorant account: **{valorant_account}**", ephemeral=True)
+        except IntegrityError:
+            await user_model.update_user(dc_id=dc_id, val_account=val_account)
+            await interaction.response.send_message(
+                f"{dc_display_name} **updated** valorant account: **{valorant_account}**", ephemeral=True)
