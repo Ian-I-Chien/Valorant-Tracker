@@ -91,11 +91,13 @@ class LastMatch:
         winning_team = "BLUE" if blue_wins > red_wins else "RED" if blue_wins < red_wins else "TIED"
         ratio = f"{blue_wins}:{red_wins}"
 
+        winning_team_text = f"{winning_team} WIN!" if winning_team != "TIED" else winning_team
+
         title_info = "{}".format(
             f"Last Match\t"
             f"{self.last_match_data['data']['metadata']['map']}\n"
             f"{self.last_match_data['data']['metadata']['mode']}\t"
-            f"{winning_team} WIN!\t"
+            f"{winning_team_text}\t"
             f"[{ratio}]"
         )
 
