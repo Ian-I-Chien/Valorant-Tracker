@@ -19,6 +19,7 @@ BOT_TOKEN= "TOKEN"
 ```
 
 [API_Token](https://github.com/Henrik-3/unofficial-valorant-api)
+```
 API_TOKEN= "API_TOKEN"
 ```
 
