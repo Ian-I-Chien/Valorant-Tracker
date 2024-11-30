@@ -40,9 +40,6 @@ class BaseModel(Model):
 
 @abc.abstractmethod
 class BaseOrm:
-    def __init__(self, model: Type[BaseModel]):
-        self._model: Type[BaseModel] = model
-
     async def __aenter__(self):
         await db_init()
         return self

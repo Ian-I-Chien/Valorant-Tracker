@@ -7,10 +7,12 @@ class UserInfo(BaseModel):
     class Meta:
         table = "user_info"
 
-    account = fields.CharField(max_length=255, unique=True)
-    valorant_account = fields.CharField(max_length=255, default=None, null=True)
-    display_name = fields.CharField(max_length=255, null=True)
-    keyword = fields.JSONField(null=True)
+    dc_id = fields.CharField(max_length=255, unique=True)
+    dc_global_name = fields.CharField(max_length=255, null=True)
+    dc_display_name = fields.CharField(max_length=255, null=True)
+    mentioned_keyword = fields.JSONField(null=True)
+    val_account = fields.CharField(max_length=255, default=None, null=True)
+    val_puuid = fields.CharField(max_length=255, default=None, null=True)
 
 
 class ChatHistory(BaseModel):
@@ -23,11 +25,3 @@ class ChatHistory(BaseModel):
                                     on_delete=fields.CASCADE)
     type = fields.CharEnumField(enum_type=ChatType)
     created_at = fields.DatetimeField(auto_now_add=True)
-
-
-class ChatKeyword(BaseModel):
-    class Meta:
-        table = "chat_keyword"
-
-    keyword = fields.CharField(max_length=255, unique=True)
-    type = fields.CharEnumField(enum_type=ChatType)
