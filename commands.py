@@ -194,7 +194,8 @@ async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessage
                               description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
                               colour=embed_color)
         embed.set_author(name="NoMoreBully")
-        await message.channel.send(embed=embed)
+        return None
+        #await message.channel.send(embed=embed)
 
 
 async def registered_with_valorant_account(interaction: discord.Interaction, valorant_account):
