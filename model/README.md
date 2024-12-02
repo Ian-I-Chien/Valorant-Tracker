@@ -13,8 +13,11 @@ A NLP model that checks if messages are toxic or friendly. It's using [Erlangshe
 ```python
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
 
-# Fire up the model
+# Create processor
 toxic_message_processor = ToxicMessageProcessor()
+
+# Fire up the model
+toxic_message_processor.init_nlp_model()
 
 # Check some text
 result: ToxicDetectorResult = toxic_message_processor.detect("your text here")
