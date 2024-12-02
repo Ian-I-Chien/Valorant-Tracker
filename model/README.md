@@ -1,6 +1,6 @@
 # Model
 
-This folder contains all the ML models used in our project.This folder contains all the ML models used in our project.
+This folder contains all the ML models used in our project.
 
 ## ToxicMessageProcessor
 A NLP model that checks if messages are toxic or friendly. It's using [Erlangshen-Roberta-110M-Sentiment](https://huggingface.co/IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment) language model.
@@ -11,7 +11,7 @@ A NLP model that checks if messages are toxic or friendly. It's using [Erlangshe
 
 ### How to use it
 ```python
-from model.toxic_detector import ToxicMessageProcessor, 
+from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
 
 # Fire up the model
 toxic_message_processor = ToxicMessageProcessor()
