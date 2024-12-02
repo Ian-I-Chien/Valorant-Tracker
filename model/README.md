@@ -3,7 +3,7 @@
 This folder contains all the ML models used in our project.
 
 ## ToxicMessageProcessor
-A NLP model that checks if messages are toxic or friendly. It's using [Erlangshen-Roberta-110M-Sentiment](https://huggingface.co/IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment) language model.
+A NLP model that checks if messages are toxic or friendly. We use the [Erlangshen-Roberta-110M-Sentiment](https://huggingface.co/IDEA-CCNL/Erlangshen-Roberta-110M-Sentiment) language model.
 
 ### What it does
 - Spots toxic vs friendly content in text
@@ -34,3 +34,5 @@ The model tells you:
 ### Reference
 - https://github.com/huggingface/transformers
 - https://huggingface.co/
+- https://pypi.org/project/transformers/
+- https://pypi.org/project/deep-translator/
