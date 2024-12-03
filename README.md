@@ -12,7 +12,8 @@ In the future, we plan to integrate the [Valorant API from Henrik-3](https://git
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
-The Token should be set in .env file
+The Token should be set in .env file.
+
 [Discord Token](https://discord.com/developers/docs/quick-start/getting-started)
 ```
 BOT_TOKEN= "TOKEN"
