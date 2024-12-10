@@ -7,24 +7,70 @@ TBD
 TBD
 
 ## Proposed Design
-The main idea is to store users' discord account with valorant account. Each user can store one discord account with multiple valorant accounts. The fields of the database are as follows.
+1. The main idea is to store users' discord account with valorant account. Each user can store one discord account with multiple valorant accounts.
+2. To calculate the number of times each user praises or criticizes each other.
+
+The fields of the database are as follows.
+
+### Account Related:
 ```
 Discord Account
 Discord Display Name
 Valorant Account
-Valornat PUUID
-Nick Name of the user
+Valorant PUUID
 ```
-### Discord Account
-- It is unique, so it will be different for each person and is used to identify your account.
+### Structure:
+```
+users {
+    DC Account (PRIMARY),
+    DC Display Name,
+    Valorant Account,
+    Valorant PUUID,
+}
+```
 
-### Discord Disply Name
-- 
-### Valorant Account
-- 
-### Valorant PUUID
+### Description
+Discord Account (PRIMARY ID)
+- It is unique, so it will be different for each person and is used to identify your account.
+  This can be read from Discord packet.
+
+Discord Disply Name
+- Discord Disply Name which can be read by Discord packet.
+
+Valorant Account
+- User's Valorant account, this account should be registered by Discord user.
+- The Valorant account can be multiple for the Discrod user.
+
+Valorant PUUID
+- An unique PUUID for each Valorant account. This ID can be gained from Valorant API.
+- When a discord user register the Valorant account, this PUUID should also be added in the data base via Valorant API.
+
+```
+nick names {
+    Nick Name ID (PRIMARY),
+    DC Account,
+    Nick Name,
+}
+```
 - 
 ### Nick Name of the user
-- 
+- Nick name can be multiple for an Discord account
 
+Mention Relalted:
+```
+Mentions of other users
+mention_count 
+Mentioned by other users
+```
+Structure:
+```
+mentions {
+    DC Account (PRIMARY),
+    Mention ID,
+    Mentioned By ID,
+    Mentione Type,
+    Mention Count,
+    Last Mentioned Time,    
+}
+```
 ....TBD
