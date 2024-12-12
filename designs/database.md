@@ -12,14 +12,8 @@ TBD
 
 The fields of the database are as follows.
 
-### Account Related:
-```
-Discord Account
-Discord Display Name
-Valorant Account
-Valorant PUUID
-```
-### Structure:
+### DB Table
+#### Structure:
 ```
 users {
     DC Account (PRIMARY),
@@ -28,8 +22,7 @@ users {
     Valorant PUUID,
 }
 ```
-
-### Description
+#### Accounnt
 Discord Account (PRIMARY ID)
 - It is unique, so it will be different for each person and is used to identify your account.
   This can be read from Discord packet.
@@ -45,6 +38,7 @@ Valorant PUUID
 - An unique PUUID for each Valorant account. This ID can be gained from Valorant API.
 - When a discord user register the Valorant account, this PUUID should also be added in the data base via Valorant API.
 
+#### Nick Name
 ```
 nick names {
     Nick Name ID (PRIMARY),
@@ -52,17 +46,14 @@ nick names {
     Nick Name,
 }
 ```
-- 
-### Nick Name of the user
+
+Nick Name of the user
 - Nick name can be multiple for an Discord account
 
-Mention Relalted:
-```
-Mentions of other users
-mention_count 
-Mentioned by other users
-```
-Structure:
+DC account
+- Described on above
+
+#### Mention Related:
 ```
 mentions {
     DC Account (PRIMARY),
@@ -73,4 +64,20 @@ mentions {
     Last Mentioned Time,    
 }
 ```
+Mention ID
+- The Discord User ID that you mentioned in your sentence
+
+Mentioned By ID
+- An user have mentioned by Discord User ID in their sentences
+  If you mentioend someone, this filed will be yourself
+
+Mention Type
+- Will be parise/insult
+
+Mention Count
+- The mention count that an user mentioned another Discord user
+
+Last Mentioned Time
+
+
 ....TBD
