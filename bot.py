@@ -35,6 +35,8 @@ async def on_ready():
     for command in bot.tree.get_commands():
         print(f"- {command.name}")
 
+    await bot.change_presence(activity=discord.Game("看誰在壞"))
+
 @bot.tree.command(name="rank", description="Historical Ranking")
 async def rank(interaction: discord.Interaction):
     await handle_rank_command(interaction)
