@@ -57,11 +57,10 @@ class ValorantPlayer:
 
         average_headshot_ratio, highest_ratio, lowest_ratio, highest_death, lowest_kill = stats
 
-        tier_image_url = rank_data.get('images', {}).get('small', None)
+        tier_image_url = rank_data.get('images', {}).get('large', None)
+        player_card = account_data['card']['small']
         
         formatted_info = (
-            f"### Account Info:\n"
-            f"Name: {account_data['name']}#{account_data['tag']}\n"
             f"Account Level: {account_data['account_level']}\n\n"
             f'Lowest Kill: {lowest_kill}\n'
             f'Highest Death: {highest_death}\n\n'
@@ -70,15 +69,13 @@ class ValorantPlayer:
             f"Avg. HS Rate (100 Games): {average_headshot_ratio}%\n"
 
             f"### Rank Info:\n"
-            f"Rank: {rank_data['currenttierpatched']}\n"
             f"Ranking in Tier: {rank_data['ranking_in_tier']}\n"
             f"Last Game: {rank_data['mmr_change_to_last_game']}\n"
         )
         
-        embed = discord.Embed(title=f"I caught u <3", color=discord.Color.blurple())
+        embed = discord.Embed(title=f"{account_data['name']}#{account_data['tag']}", color=discord.Color.blurple())
         embed.description = formatted_info
-        
-        if tier_image_url:
-            embed.set_image(url=tier_image_url)
+        embed.set_thumbnail(url=player_card)
+        embed.set_footer(text=rank_data['currenttierpatched'], icon_url=tier_image_url)
 
         return embed
