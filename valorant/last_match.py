@@ -105,6 +105,14 @@ class LastMatch:
         embed.description = formatted_info
         return embed
     
+    async def get_complete_last_match(self):
+        await self.get_last_match_id()
+        url = url_json['match'].format(matchid=self.last_match_id)
+        self.last_match_data = await fetch_json(url)
+        if not self.last_match_data:
+            return None
+        return self.last_match_data
+
     async def get_last_match(self):
         await self.get_last_match_id()
         url = url_json['match'].format(matchid=self.last_match_id)
@@ -117,14 +125,15 @@ class LastMatch:
     async def get_last_match_id(self):
         url = url_json['matches_v3'].format(region=self.region, player_name=self.player_name, player_tag=self.player_tag)
         matches_data = await fetch_json(url)
+
         if not matches_data:
             return None
         last_match = matches_data["data"][0]
         self.last_match_id = last_match["metadata"]["matchid"]
+        return self.last_match_id
 
 
-    async def save_matches_to_file(self, file_path="matches-id.json"):
-        matches_data = await self.get_last_match_id()
+    def save_matches_to_file(self, data, file_path="./testcase/match_info.json"):
         with open(file_path, "w", encoding="utf-8") as file:
-            json.dump(matches_data, file, ensure_ascii=False, indent=4)
+            json.dump(data, file, ensure_ascii=False, indent=4)
         print(f"Matches data saved to {file_path}")
