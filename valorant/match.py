@@ -79,8 +79,8 @@ class Match:
                 f"[{headshot_percentage:.2f}%] "
                 f"[{score}]"
             )
-
-            if rank_in_tier and mmr_change and self.last_match_data['data']['metadata']['mode'] == 'Competitive':
+            print(rank_in_tier , mmr_change)
+            if rank_in_tier is not None and mmr_change is not None and self.last_match_data['data']['metadata']['mode'] == 'Competitive':
                 formatted_info += "`{}`\n".format(
                     f"[{rank_in_tier}/99] "
                     f"[{mmr_change:+d}]"
