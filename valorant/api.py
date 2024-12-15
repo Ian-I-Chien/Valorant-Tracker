@@ -17,6 +17,7 @@ url_json = {
     'match': "https://api.henrikdev.xyz/valorant/v2/match/{matchid}",
     'matches_v1': 'https://api.henrikdev.xyz/valorant/v1/stored-matches/{region}/{player_name}/{player_tag}',
     'matches_v3': "https://api.henrikdev.xyz/valorant/v3/matches/{region}/{player_name}/{player_tag}",
+    'get_match_by_id': "https://api.henrikdev.xyz/valorant/v4/match/{region}/{matchid}",
 }
 
 async def fetch_json(url, params=None):

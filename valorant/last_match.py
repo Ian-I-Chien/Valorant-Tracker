@@ -132,6 +132,25 @@ class LastMatch:
         self.last_match_id = last_match["metadata"]["matchid"]
         return self.last_match_id
 
+    async def get_five_match_id(self):
+        match_ids = []
+        url = url_json['matches_v3'].format(region=self.region, player_name=self.player_name, player_tag=self.player_tag)
+        matches_data = await fetch_json(url)
+
+        if not matches_data:
+            return None
+
+        for i in range(len(matches_data["data"])):
+            last_match = matches_data["data"][i]
+            match_id = last_match["metadata"]["matchid"]
+            match_ids.append(match_id)
+
+        return '\n'.join([f'\t{match_id}' for match_id in match_ids])
+
+    async def get_match_by_id(self, matchid):
+        url = url_json['get_match_by_id'].format(region=self.region, matchid=matchid)
+        matches_data = await fetch_json(url)
+        return matches_data
 
     def save_matches_to_file(self, data, file_path="./testcase/match_info.json"):
         with open(file_path, "w", encoding="utf-8") as file:
