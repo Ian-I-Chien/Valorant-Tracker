@@ -1,5 +1,5 @@
 from valorant.player import ValorantPlayer
-from valorant.last_match import LastMatch
+from valorant.match import Match
 import asyncio
 import sys
 
@@ -16,22 +16,22 @@ async def main():
     case = sys.argv[1]
 
     player = ValorantPlayer(sys.argv[2], sys.argv[3])
-    last_match = LastMatch(sys.argv[2], sys.argv[3])
+    match = Match(sys.argv[2], sys.argv[3])
 
     if case == "get_account":
         print(await player.get_account())
     elif case == "get_rank":
         print(await player.get_rank())
     elif case == "get_last_match_id":
-        print(await last_match.get_last_match_id())
+        print(await match.get_last_match_id())
     elif case == "get_last_match":
-        data = await last_match.get_complete_last_match()
-        last_match.save_matches_to_file(data)
+        data = await match.get_complete_last_match()
+        match.save_matches_to_file(data)
     elif case == "get_five_match_id":
-        print(await last_match.get_five_match_id())
+        print(await match.get_five_match_id())
     elif case == "get_match_by_id":
-        data = await last_match.get_match_by_id(sys.argv[4])
-        last_match.save_matches_to_file(data)
+        data = await match.get_match_by_id(sys.argv[4])
+        match.save_matches_to_file(data)
     else:
         help_message()
         sys.exit(1)

@@ -3,7 +3,7 @@ import discord
 from dotenv import load_dotenv
 from discord.ext import commands
 from discord import app_commands
-from valorant.last_match import LastMatch
+from valorant.match import Match
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
 from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions, \
@@ -62,8 +62,8 @@ async def lastmatch(interaction: discord.Interaction, player_full_name: str):
     player_name, player_tag = await parse_player_name(interaction, player_full_name)
     if not player_name or not player_tag: return
 
-    player_last_match = LastMatch(player_name, player_tag)
-    last_match = await player_last_match.get_last_match()
+    match = Match(player_name, player_tag)
+    last_match = await match.get_last_match()
 
     if not last_match:
         await interaction.followup.send("No match data found.", ephemeral=True)

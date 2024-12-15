@@ -8,7 +8,7 @@ from .player import ValorantPlayer
 from .api import fetch_json, url_json
 
 
-class LastMatch:
+class Match:
     def __init__(self, player_name, player_tag, region="ap"):
         self.last_match_id = None
         self.last_match_data = None
