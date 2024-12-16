@@ -18,3 +18,5 @@ valo_api==2.0.8
 yarl==1.18.0
 tortoise-orm==0.22.1
 deep_translator
+pre-commit==4.0.1
+black
