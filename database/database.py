@@ -5,19 +5,19 @@ from typing import Type
 from tortoise import Tortoise, Model
 
 
-def get_dp_path(server_name='default'):
-    return os.path.join(os.path.dirname(__file__), f'{server_name}_no_bully.db')
+def get_dp_path(server_name="default"):
+    return os.path.join(os.path.dirname(__file__), f"{server_name}_no_bully.db")
 
 
-async def db_init(server_name='default'):
+async def db_init(server_name="default"):
     """
     init DB
     :param server_name: every server has its own DB
     :return:
     """
     await Tortoise.init(
-        db_url=f'sqlite://{get_dp_path(server_name)}',
-        modules={'models': ['database.models']}
+        db_url=f"sqlite://{get_dp_path(server_name)}",
+        modules={"models": ["database.models"]},
     )
     await Tortoise.generate_schemas()
 
@@ -34,8 +34,11 @@ class BaseModel(Model):
         abstract = True
 
     def to_dict(self):
-        return {field: getattr(self, field) for field in self._meta.fields_map if field not in ['sent_messages',
-                                                                                                'received_messages']}
+        return {
+            field: getattr(self, field)
+            for field in self._meta.fields_map
+            if field not in ["sent_messages", "received_messages"]
+        }
 
 
 @abc.abstractmethod

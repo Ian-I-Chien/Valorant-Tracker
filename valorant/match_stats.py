@@ -14,7 +14,7 @@ class MatchStats:
         head = shots["head"]
         body = shots["body"]
         leg = shots["leg"]
-        
+
         total_shots_in_match = head + body + leg
 
         self.lowest_kill = min(self.lowest_kill, kills)

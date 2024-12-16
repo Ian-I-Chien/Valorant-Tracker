@@ -5,14 +5,14 @@ from file_manager import load_json, save_json
 from datetime import datetime
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
 
-CONSTANTS_FILE = 'config/constants.json'
-USER_DATA_FILE = 'data/user_data.json'
+CONSTANTS_FILE = "config/constants.json"
+USER_DATA_FILE = "data/user_data.json"
 
 default_constants = {
     "target_keywords": ["user"],
     "insult_keywords": ["toxic"],
     "praise_keywords": ["awesome"],
-    "last_reset_date": "1970-01-01"
+    "last_reset_date": "1970-01-01",
 }
 
 default_user_data = {
@@ -23,7 +23,7 @@ default_user_data = {
         "praise_mentions": 0,
         "history_insult_mentions": 0,
         "histiry_praise_mentions": 0,
-        "last_reset_date": "1970-01-01"
+        "last_reset_date": "1970-01-01",
     }
 }
 
@@ -36,7 +36,7 @@ user_data = load_json(USER_DATA_FILE, default_user_data)
 
 
 def check_and_reset_mentions():
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
 
     if "last_reset_date" not in constants:
         constants["last_reset_date"] = current_date
@@ -51,32 +51,44 @@ def check_and_reset_mentions():
 
 
 def reset_daily_mentions():
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
     for user_name, user_info in user_data.items():
-        user_info['mentions'] = 0
-        user_info['last_reset_date'] = current_date
+        user_info["mentions"] = 0
+        user_info["last_reset_date"] = current_date
     save_json(USER_DATA_FILE, user_data)
 
 
 async def handle_rank_command(interaction: discord.Interaction):
     sorted_insults = sorted(
         (
-            (user_name, {**user_info, "display_name": user_info.get("display_name", user_info["name"])})
+            (
+                user_name,
+                {
+                    **user_info,
+                    "display_name": user_info.get("display_name", user_info["name"]),
+                },
+            )
             for user_name, user_info in user_data.items()
-            if user_info.get('insult_mentions', 0) > 0
+            if user_info.get("insult_mentions", 0) > 0
         ),
-        key=lambda x: x[1]['insult_mentions'],
-        reverse=True
+        key=lambda x: x[1]["insult_mentions"],
+        reverse=True,
     )
 
     sorted_praises = sorted(
         (
-            (user_name, {**user_info, "display_name": user_info.get("display_name", user_info["name"])})
+            (
+                user_name,
+                {
+                    **user_info,
+                    "display_name": user_info.get("display_name", user_info["name"]),
+                },
+            )
             for user_name, user_info in user_data.items()
-            if user_info.get('praise_mentions', 0) > 0
+            if user_info.get("praise_mentions", 0) > 0
         ),
-        key=lambda x: x[1]['praise_mentions'],
-        reverse=True
+        key=lambda x: x[1]["praise_mentions"],
+        reverse=True,
     )
 
     insult_rank_message = build_rank_message(sorted_insults, "insult")
@@ -91,13 +103,13 @@ def build_rank_message(sorted_users, rank_type):
         "insult": {
             "title": "# Insult Rank",
             "field": "insult_mentions",
-            "message": "You're going straight to hell!"
+            "message": "You're going straight to hell!",
         },
         "praise": {
             "title": "# Praise Rank",
             "field": "praise_mentions",
-            "message": "You're going to heaven!"
-        }
+            "message": "You're going to heaven!",
+        },
     }
 
     if rank_type not in rank_data:
@@ -124,94 +136,119 @@ def build_rank_message(sorted_users, rank_type):
 
 async def auto_handle_insult(message: discord.Message):
     user_name = message.author.name
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
 
     if any(keyword.lower() in message.content.lower() for keyword in TARGET_KEYWORDS):
         if any(insult in message.content for insult in INSULT_KEYWORDS):
             if user_name not in user_data:
                 user_data[user_name] = {
-                    'name': message.author.display_name,
-                    'display_name': message.author.display_name,
-                    'insult_mentions': 1,
-                    'praise_mentions': 0,
-                    'history_insult_mentions': 1,
-                    'history_praise_mentions': 0,
-                    'last_reset_date': current_date
+                    "name": message.author.display_name,
+                    "display_name": message.author.display_name,
+                    "insult_mentions": 1,
+                    "praise_mentions": 0,
+                    "history_insult_mentions": 1,
+                    "history_praise_mentions": 0,
+                    "last_reset_date": current_date,
                 }
             else:
-                user_data[user_name]['insult_mentions'] = user_data[user_name].get('insult_mentions', 0) + 1
-                user_data[user_name]['history_insult_mentions'] = user_data[user_name].get('history_insult_mentions',
-                                                                                           0) + 1
-                user_data[user_name]['last_reset_date'] = user_data[user_name].get('last_reset_date', current_date)
+                user_data[user_name]["insult_mentions"] = (
+                    user_data[user_name].get("insult_mentions", 0) + 1
+                )
+                user_data[user_name]["history_insult_mentions"] = (
+                    user_data[user_name].get("history_insult_mentions", 0) + 1
+                )
+                user_data[user_name]["last_reset_date"] = user_data[user_name].get(
+                    "last_reset_date", current_date
+                )
 
             save_json(USER_DATA_FILE, user_data)
 
-            insult_count = user_data[user_name].get('insult_mentions', 0)
+            insult_count = user_data[user_name].get("insult_mentions", 0)
             response_message = f"{message.author.display_name} ({user_data[user_name]['name']})\nTOXIC: {insult_count}"
             await message.channel.send(response_message)
 
 
 async def auto_handle_praise(message: discord.Message):
     user_name = message.author.name
-    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date = datetime.now().strftime("%Y-%m-%d")
 
-    if any(keyword.lower() in message.content.lower() for keyword in TARGET_KEYWORDS) and \
-            any(praise in message.content.lower() for praise in constants.get("praise_keywords", [])):
+    if any(
+        keyword.lower() in message.content.lower() for keyword in TARGET_KEYWORDS
+    ) and any(
+        praise in message.content.lower()
+        for praise in constants.get("praise_keywords", [])
+    ):
 
         if user_name not in user_data:
             user_data[user_name] = {
-                'name': message.author.display_name,
-                'display_name': message.author.display_name,
-                'insult_mentions': 0,
-                'praise_mentions': 1,
-                'history_insult_mentions': 0,
-                'history_praise_mentions': 1,
-                'last_reset_date': current_date
+                "name": message.author.display_name,
+                "display_name": message.author.display_name,
+                "insult_mentions": 0,
+                "praise_mentions": 1,
+                "history_insult_mentions": 0,
+                "history_praise_mentions": 1,
+                "last_reset_date": current_date,
             }
         else:
-            user_data[user_name]['display_name'] = message.author.display_name
-            user_data[user_name]['praise_mentions'] = user_data[user_name].get('praise_mentions', 0) + 1
-            user_data[user_name]['last_reset_date'] = user_data[user_name].get('last_reset_date', current_date)
+            user_data[user_name]["display_name"] = message.author.display_name
+            user_data[user_name]["praise_mentions"] = (
+                user_data[user_name].get("praise_mentions", 0) + 1
+            )
+            user_data[user_name]["last_reset_date"] = user_data[user_name].get(
+                "last_reset_date", current_date
+            )
 
         save_json(USER_DATA_FILE, user_data)
 
-        praise_count = user_data[user_name].get('praise_mentions', 0)
+        praise_count = user_data[user_name].get("praise_mentions", 0)
         response_message = f"{message.author.display_name} ({user_data[user_name]['name']})\nPRAISE: {praise_count}"
         await message.channel.send(response_message)
 
 
-async def auto_nlp_process(message: discord.Message, nlp_processor: ToxicMessageProcessor):
+async def auto_nlp_process(
+    message: discord.Message, nlp_processor: ToxicMessageProcessor
+):
     nlp_result: ToxicDetectorResult = await nlp_processor.nlp_process(message)
     if nlp_result.score >= 0.9:
         if nlp_result.label == "Positive":
             message_type = "正面言論"
-            embed_color = 0xa7c957
+            embed_color = 0xA7C957
         else:
             message_type = "負面言論"
-            embed_color = 0xbc4749
+            embed_color = 0xBC4749
 
-        embed = discord.Embed(title="NLP Processor",
-                              description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
-                              colour=embed_color)
+        embed = discord.Embed(
+            title="NLP Processor",
+            description=f"{message.author.display_name}\n你的訊息 [{message.content}] 被檢測為 **{message_type}**",
+            colour=embed_color,
+        )
         embed.set_author(name="NoMoreBully")
         return None
-        #await message.channel.send(embed=embed)
+        # await message.channel.send(embed=embed)
 
 
-async def registered_with_valorant_account(interaction: discord.Interaction, valorant_account):
+async def registered_with_valorant_account(
+    interaction: discord.Interaction, valorant_account
+):
     dc_id = interaction.user.id
     dc_global_name = interaction.user.global_name
     dc_display_name = interaction.user.display_name
     val_account = valorant_account.replace(" ", "")
     async with UserOrm() as user_model:
         try:
-            await user_model.register_user(dc_id=dc_id,
-                                           dc_global_name=dc_global_name,
-                                           dc_display_name=dc_display_name,
-                                           val_account=val_account)
+            await user_model.register_user(
+                dc_id=dc_id,
+                dc_global_name=dc_global_name,
+                dc_display_name=dc_display_name,
+                val_account=val_account,
+            )
             await interaction.response.send_message(
-                f"{dc_display_name} **registered** valorant account: **{valorant_account}**", ephemeral=True)
+                f"{dc_display_name} **registered** valorant account: **{valorant_account}**",
+                ephemeral=True,
+            )
         except IntegrityError:
             await user_model.update_user(dc_id=dc_id, val_account=val_account)
             await interaction.response.send_message(
-                f"{dc_display_name} **updated** valorant account: **{valorant_account}**", ephemeral=True)
+                f"{dc_display_name} **updated** valorant account: **{valorant_account}**",
+                ephemeral=True,
+            )

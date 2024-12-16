@@ -6,8 +6,14 @@ from discord import app_commands
 from valorant.match import Match
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
-from commands import handle_rank_command, auto_handle_praise, auto_handle_insult, check_and_reset_mentions, \
-    auto_nlp_process, registered_with_valorant_account
+from commands import (
+    handle_rank_command,
+    auto_handle_praise,
+    auto_handle_insult,
+    check_and_reset_mentions,
+    auto_nlp_process,
+    registered_with_valorant_account,
+)
 from model.toxic_detector import ToxicMessageProcessor
 
 load_dotenv()
@@ -24,7 +30,7 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f"Logged in as {bot.user}")
     try:
         await bot.tree.sync()
         print("Slash commands synced successfully.")
@@ -37,6 +43,7 @@ async def on_ready():
 
     await bot.change_presence(activity=discord.Game("看誰在壞"))
 
+
 @bot.tree.command(name="rank", description="Historical Ranking")
 async def rank(interaction: discord.Interaction):
     await handle_rank_command(interaction)
@@ -45,7 +52,8 @@ async def rank(interaction: discord.Interaction):
 @bot.tree.command(name="info", description="Player Information")
 async def info(interaction: discord.Interaction, player_full_name: str):
     player_name, player_tag = await parse_player_name(interaction, player_full_name)
-    if not player_name or not player_tag: return
+    if not player_name or not player_tag:
+        return
 
     player = ValorantPlayer(player_name, player_tag)
     player_info = await player.get_player_info()
@@ -60,7 +68,8 @@ async def info(interaction: discord.Interaction, player_full_name: str):
 @bot.tree.command(name="lm", description="Last Match Information")
 async def lastmatch(interaction: discord.Interaction, player_full_name: str):
     player_name, player_tag = await parse_player_name(interaction, player_full_name)
-    if not player_name or not player_tag: return
+    if not player_name or not player_tag:
+        return
 
     match = Match(player_name, player_tag)
     last_match = await match.get_last_match()
@@ -72,7 +81,9 @@ async def lastmatch(interaction: discord.Interaction, player_full_name: str):
     await interaction.followup.send(embed=last_match)
 
 
-@bot.tree.command(name="reg_val", description="Registered Self discord account with valorant account.")
+@bot.tree.command(
+    name="reg_val", description="Registered Self discord account with valorant account."
+)
 @app_commands.describe(valorant_account="valorant account with hashtag. ex:user#1234")
 async def reg_val(interaction: discord.Interaction, valorant_account: str):
     await registered_with_valorant_account(interaction, valorant_account)
@@ -90,5 +101,5 @@ async def on_message(message):
 
 def run_bot():
     check_and_reset_mentions()
-    toxic_message_processor.init_nlp_model() # Initail NLP model
+    toxic_message_processor.init_nlp_model()  # Initail NLP model
     bot.run(TOKEN)

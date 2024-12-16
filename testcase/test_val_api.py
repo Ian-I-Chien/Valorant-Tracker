@@ -3,12 +3,16 @@ from valorant.match import Match
 import asyncio
 import sys
 
+
 def help_message():
     print("Usage:\npython3 -m testcase.test_val_api.py [API Command] Account Tag")
-    print("[API Command]: [get_account, get_rank, get_last_match_id", "get_last_match, get_five_match_id]")
+    print(
+        "[API Command]: [get_account, get_rank, get_last_match_id",
+        "get_last_match, get_five_match_id]",
+    )
     print("python3 -m testcase.test_val_api.py get_match_by_id [MATCHID]")
 
-  
+
 async def main():
     if len(sys.argv) < 4 or len(sys.argv) > 5:
         help_message()
@@ -36,11 +40,7 @@ async def main():
         help_message()
         sys.exit(1)
 
+
 # python3 -m testcase.test_val_api args account tag
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
-
-
