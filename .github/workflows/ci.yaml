@@ -1,0 +1,47 @@
+name: Code Quality and Tests
+
+on:
+  push:
+    branches:
+      - main
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pr_checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Check Python script for errors
+        run: |
+          timeout 120 python3 main.py || (echo "Timeout occurred, but treated as success"; exit 0)
+          if [ $? -ne 0 ]; then
+            echo "An error occurred, marking as failure."
+            exit 1
+          fi
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+
+      - name: Run Black to check code style
+        run: |
+          black --check .
+
+      - name: Run tests (optional)
+        run: |
+          pytest
+

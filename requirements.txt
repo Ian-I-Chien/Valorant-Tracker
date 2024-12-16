@@ -20,3 +20,7 @@ tortoise-orm==0.22.1
 deep_translator
 pre-commit==4.0.1
 black
+transformers
+torch
+tensorflow
+tf-keras
