@@ -115,9 +115,7 @@ class Match:
         winning_team = (
             "BLUE"
             if blue_wins > red_wins
-            else "RED"
-            if blue_wins < red_wins
-            else "TIED"
+            else "RED" if blue_wins < red_wins else "TIED"
         )
         ratio = f"{blue_wins}:{red_wins}"
 
