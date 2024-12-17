@@ -137,7 +137,7 @@ class Match:
 
     async def get_complete_last_match(self):
         await self.get_last_match_id()
-        url = url_json["match"].format(matchid=self.last_match_id)
+        url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
         self.last_match_data = await fetch_json(url)
         if not self.last_match_data:
             return None
@@ -145,7 +145,7 @@ class Match:
 
     async def get_last_match(self):
         await self.get_last_match_id()
-        url = url_json["match"].format(matchid=self.last_match_id)
+        url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
         self.last_match_data = await fetch_json(url)
         if not self.last_match_data:
             return None
