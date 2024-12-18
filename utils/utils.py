@@ -5,13 +5,9 @@ async def parse_player_name(interaction: discord.Interaction, player_full_name: 
     try:
         player_name, player_tag = player_full_name.split("#")
     except ValueError:
-        await interaction.response.send_message(
-            "Wrong Format 'player_name#tag'。", ephemeral=True
-        )
+        await interaction.response.send_message("Wrong Format 'player_name#tag'。")
         return None, None
 
-    await interaction.response.send_message(
-        "Fetching data... Please wait.", ephemeral=True
-    )
+    await interaction.response.send_message("Fetching data... Please wait.")
 
     return player_name, player_tag
