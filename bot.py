@@ -62,10 +62,10 @@ async def info(interaction: discord.Interaction, player_full_name: str):
         error_embed: discord.Embed = discord.Embed(
             title="Ouch!!", description=player_info["error"]
         )
-        await interaction.edit_original_response(embed=error_embed)
+        await interaction.edit_original_response(content=None, embed=error_embed)
         return
 
-    await interaction.edit_original_response(embed=player_info)
+    await interaction.edit_original_response(content=None, embed=player_info)
 
 
 @bot.tree.command(name="lm", description="Last Match Information")
@@ -81,10 +81,10 @@ async def lastmatch(interaction: discord.Interaction, player_full_name: str):
         error_embed: discord.Embed = discord.Embed(
             title="Ouch!!", description="No match data found."
         )
-        await interaction.edit_original_response(embed=error_embed)
+        await interaction.edit_original_response(content=None, embed=error_embed)
         return
 
-    await interaction.edit_original_response(embed=last_match)
+    await interaction.edit_original_response(content=None, embed=last_match)
 
 
 @bot.tree.command(
