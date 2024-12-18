@@ -43,8 +43,9 @@ class Match:
         return None
 
     async def sorted_formatted_player(self):
+
         sorted_players = sorted(
-            self.last_match_data["data"]["players"]["all_players"],
+            self.last_match_data["data"]["players"],
             key=lambda x: x["stats"]["score"],
             reverse=True,
         )
@@ -62,6 +63,7 @@ class Match:
         for index, (player, rank_data_dict) in enumerate(
             zip(sorted_players, rank_data_dicts)
         ):
+
             current_tier = (
                 rank_data_dict.get("currenttierpatched", "Unrated")
                 if rank_data_dict
@@ -90,33 +92,46 @@ class Match:
                 else 0
             )
 
+            agent_name = player["agent"].get("name", "Unknown Agent")
+
             formatted_info += "`{}`\n".format(
-                f"[{player['team'][0]}] [{current_tier}] "
+                f"[{player['team_id']}] [{current_tier}] "
                 f"[{player['name']}#{player['tag']}] "
             )
             formatted_info += "`{}`\n".format(
-                f"{player['character']} "
+                f"{agent_name} "
                 f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
                 f"[{headshot_percentage:.2f}%] "
                 f"[{score}]"
             )
-            print(rank_in_tier, mmr_change)
+
             if (
                 rank_in_tier is not None
                 and mmr_change is not None
-                and self.last_match_data["data"]["metadata"]["mode"] == "Competitive"
+                and self.last_match_data["data"]["metadata"]["queue"]["name"]
+                == "Competitive"
             ):
                 formatted_info += "`{}`\n".format(
                     f"[{rank_in_tier}/99] " f"[{mmr_change:+d}]"
                 )
 
-        blue_wins = self.last_match_data["data"]["teams"]["blue"]["rounds_won"]
-        red_wins = self.last_match_data["data"]["teams"]["red"]["rounds_won"]
+        blue_wins = next(
+            team["rounds"]["won"]
+            for team in self.last_match_data["data"]["teams"]
+            if team["team_id"] == "Blue"
+        )
+        red_wins = next(
+            team["rounds"]["won"]
+            for team in self.last_match_data["data"]["teams"]
+            if team["team_id"] == "Red"
+        )
+
         winning_team = (
             "BLUE"
             if blue_wins > red_wins
             else "RED" if blue_wins < red_wins else "TIED"
         )
+
         ratio = f"{blue_wins}:{red_wins}"
 
         winning_team_text = (
@@ -125,12 +140,13 @@ class Match:
 
         title_info = "{}".format(
             f"Last Match\t"
-            f"{self.last_match_data['data']['metadata']['map']}\n"
-            f"{self.last_match_data['data']['metadata']['mode']}\t"
+            f"{self.last_match_data['data']['metadata']['map']['name']}\n"
+            f"{self.last_match_data['data']['metadata']['queue']['name']}\t"
             f"{winning_team_text}\t"
             f"[{ratio}]"
         )
 
+        # Create a Discord embed with the formatted information
         embed = discord.Embed(title=title_info, color=discord.Color.blurple())
         embed.description = formatted_info
         return embed
