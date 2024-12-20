@@ -34,8 +34,10 @@ python3 main.py
 To use the bot, simply type the following commands in your Discord server where the bot is active:
 
 ## Bot Commands on Discord
+[INFO](https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/designs/info.md)
 ```
 /info Valorant-User-Name#User-Tage
+
 ```
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
