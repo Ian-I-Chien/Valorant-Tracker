@@ -81,7 +81,10 @@ class Match:
             stats = player.get("stats", {})
             score = math.floor(
                 stats.get("score", 0)
-                / self.last_match_data["data"]["metadata"].get("rounds_played", 1)
+                / (
+                    self.last_match_data["data"]["teams"][0]["rounds"]["won"]
+                    + self.last_match_data["data"]["teams"][0]["rounds"]["lost"]
+                )
             )
             total_shots = sum(
                 stats.get(k, 0) for k in ["bodyshots", "headshots", "legshots"]
