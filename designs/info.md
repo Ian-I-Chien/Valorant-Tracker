@@ -20,6 +20,6 @@ This project uses the [Valorant API from Henrik-3](https://github.com/Henrik-3/u
 #### Highest Kill in history
   Get from [Get Stored Match V1](https://api.henrikdev.xyz/valorant/v1/stored-matches/{region}/{player_name}/{player_tag})
 #### Rank in Tier
-  Get from [Get MMR V1] (https://api.henrikdev.xyz/valorant/v1/mmr/{region}/{player_name}/{player_tag})
+  Get from [Get MMR V1](https://api.henrikdev.xyz/valorant/v1/mmr/{region}/{player_name}/{player_tag})
 #### Last MMR change
-  Get from [Get MMR V1] (https://api.henrikdev.xyz/valorant/v1/mmr/{region}/{player_name}/{player_tag})
+  Get from [Get MMR V1](https://api.henrikdev.xyz/valorant/v1/mmr/{region}/{player_name}/{player_tag})
