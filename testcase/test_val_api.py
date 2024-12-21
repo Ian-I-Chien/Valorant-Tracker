@@ -5,13 +5,12 @@ import sys
 
 
 def help_message():
-    print("Usage:\npython3 -m testcase.test_val_api.py [API Command] Account Tag")
+    print("Usage:\npython3 -m testcase.test_val_api [API Command] Account Tag")
     print(
         "[API Command]: [get_account, get_rank, get_last_match_id",
-        "get_last_match, get_five_match_id, get_melee_killer]",
+        "get_last_match, get_five_match_id, get_melee_killer, get_stored_match_by_api]",
     )
-    print("python3 -m testcase.test_val_api.py get_match_by_id [MATCHID]")
-    print("python3 -m testcase.test_val_api.py get_melee_killer [MATCHID]")
+    print("python3 -m testcase.test_val_api get_melee_killer Account Tag [MATCHID]")
 
 
 async def main():
@@ -23,24 +22,33 @@ async def main():
     player = ValorantPlayer(sys.argv[2], sys.argv[3])
     match = Match(sys.argv[2], sys.argv[3])
 
-    if case == "get_account":
-        print(await player.get_account())
-    elif case == "get_rank":
-        print(await player.get_rank())
-    elif case == "get_last_match_id":
-        print(await match.get_last_match_id())
-    elif case == "get_last_match":
-        data = await match.get_complete_last_match()
-        match.save_matches_to_file(data)
-    elif case == "get_five_match_id":
-        print(await match.get_five_match_id())
-    elif case == "get_match_by_id":
-        data = await match.get_match_by_id(sys.argv[4])
-        match.save_matches_to_file(data)
-    elif case == "get_melee_killer":
-        data = await match.get_match_by_id(sys.argv[4])
-        print(match.check_melee_info())
-    else:
+    try:
+        if case == "get_account":
+            print(await player.get_account_by_api())
+        elif case == "get_rank":
+            print(await player.get_rank_by_api())
+        elif case == "get_last_match_id":
+            print(await match.get_last_match_id())
+        elif case == "get_last_match":
+            data = await match.get_complete_last_match()
+            match.save_matches_to_file(data)
+        elif case == "get_five_match_id":
+            print(await match.get_five_match_id())
+        elif case == "get_match_by_id":
+            data = await match.get_match_by_id(sys.argv[4])
+            match.save_matches_to_file(data, "./testcase/match_by_id.json")
+            print("Check data in ./testcase/match_by_id.json")
+        elif case == "get_melee_killer":
+            data = await match.get_match_by_id(sys.argv[4])
+            print(match.check_melee_info())
+        elif case == "get_match_stats":
+            data = await player.get_stored_match_by_api()
+            match.save_matches_to_file(data, "./testcase/match_states.json")
+            print("Check data in ./testcase/match_states.json")
+        else:
+            help_message()
+            sys.exit(1)
+    except Exception as e:
         help_message()
         sys.exit(1)
 

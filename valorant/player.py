@@ -14,7 +14,7 @@ class ValorantPlayer:
         self.rank_data = None
         self.match_stats = MatchStats()
 
-    async def get_account(self):
+    async def get_account_by_api(self):
         url = url_json["account"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
@@ -22,7 +22,7 @@ class ValorantPlayer:
         self.account_data = account_data.get("data") if account_data else None
         return self.account_data
 
-    async def get_rank(self):
+    async def get_rank_by_api(self):
         url = url_json["rank"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
@@ -30,12 +30,17 @@ class ValorantPlayer:
         self.rank_data = rank_data.get("data") if rank_data else None
         return self.rank_data
 
-    async def get_match_stats(self):
+    async def get_stored_match_by_api(self):
         url = url_json["matches_v1"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
         matches_data = await fetch_json(url)
+        if not matches_data:
+            return None
+        return matches_data
 
+    async def get_match_stats(self):
+        matches_data = await self.get_stored_match_by_api()
         if not matches_data:
             return None
 
@@ -49,11 +54,11 @@ class ValorantPlayer:
         return self.match_stats.get_summary()
 
     async def get_player_info(self):
-        account_data = await self.get_account()
+        account_data = await self.get_account_by_api()
         if not account_data:
             return {"error": "Unable to fetch account data."}
 
-        rank_data = await self.get_rank()
+        rank_data = await self.get_rank_by_api()
         if not rank_data:
             return {"error": "Unable to fetch rank data."}
 

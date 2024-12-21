@@ -19,18 +19,8 @@ class Match:
     async def get_rank_with_retries(self, player_instance, retries=5, delay=2):
         attempt = 0
         while attempt < retries:
-            rank_data_dict = await player_instance.get_rank()
-            if rank_data_dict:
-                return rank_data_dict
-            attempt += 1
-            await asyncio.sleep(delay)
-        return None
-
-    async def get_rank_with_retries(self, player_instance, retries=5, delay=2):
-        attempt = 0
-        while attempt < retries:
             try:
-                rank_data_dict = await player_instance.get_rank()
+                rank_data_dict = await player_instance.get_rank_by_api()
                 if rank_data_dict:
                     return rank_data_dict
             except Exception as e:
@@ -181,28 +171,38 @@ class Match:
         embed.description = formatted_info
         return embed
 
-    async def get_complete_last_match(self):
-        await self.get_last_match_id()
+    async def get_stored_match_by_id_by_api(self):
         url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
         self.last_match_data = await fetch_json(url)
         if not self.last_match_data:
             return None
         return self.last_match_data
 
+    async def get_complete_last_match(self):
+        await self.get_last_match_id()
+        await self.get_stored_match_by_id_by_api()
+        if not self.last_match_data:
+            return None
+        return self.last_match_data
+
     async def get_last_match(self):
         await self.get_last_match_id()
-        url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
-        self.last_match_data = await fetch_json(url)
+        await self.get_stored_match_by_id_by_api()
         if not self.last_match_data:
             return None
         return await self.sorted_formatted_player()
 
-    async def get_last_match_id(self):
+    async def get_matches_v3_by_api(self):
         url = url_json["matches_v3"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
         matches_data = await fetch_json(url)
+        if not matches_data:
+            return None
+        return matches_data
 
+    async def get_last_match_id(self):
+        matches_data = await self.get_matches_v3_by_api()
         if not matches_data:
             return None
         last_match = matches_data["data"][0]
@@ -211,10 +211,7 @@ class Match:
 
     async def get_five_match_id(self):
         match_ids = []
-        url = url_json["matches_v3"].format(
-            region=self.region, player_name=self.player_name, player_tag=self.player_tag
-        )
-        matches_data = await fetch_json(url)
+        matches_data = await self.get_matches_v3_by_api()
 
         if not matches_data:
             return None
