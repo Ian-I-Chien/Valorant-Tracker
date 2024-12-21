@@ -212,7 +212,6 @@ class Match:
     async def get_five_match_id(self):
         match_ids = []
         matches_data = await self.get_matches_v3_by_api()
-
         if not matches_data:
             return None
 
