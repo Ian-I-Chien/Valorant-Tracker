@@ -42,7 +42,21 @@ class Match:
         )
         return None
 
+    def check_melee_info(self):
+        melee_killers = []
+        melee_victims = []
+        for kill in self.last_match_data["data"]["kills"]:
+            weapon_type = kill["weapon"]["type"]
+            if weapon_type == "Melee":
+                killer_name = kill["killer"]["name"]
+                victim_name = kill["victim"]["name"]
+                melee_killers.append(killer_name)
+                melee_victims.append(victim_name)
+        return melee_killers, melee_victims
+
     async def sorted_formatted_player(self):
+
+        melee_killers, melee_victims = self.check_melee_info()
 
         sorted_players = sorted(
             self.last_match_data["data"]["players"],
@@ -96,11 +110,20 @@ class Match:
             )
 
             agent_name = player["agent"].get("name", "Unknown Agent")
+            melee_info = ""
+            melee_kill_count = melee_killers.count(player["name"])
+            melee_victim_count = melee_victims.count(player["name"])
+
+            if melee_kill_count > 0:
+                melee_info += f"[Knifed x{melee_kill_count}] :>"
+            if melee_victim_count > 0:
+                melee_info += f"[Get Knifed x{melee_victim_count}] :<"
 
             formatted_info += "`{}`\n".format(
                 f"[{player['team_id']}] [{current_tier}] "
-                f"[{player['name']}#{player['tag']}] "
+                f"[{player['name']}#{player['tag']}]"
             )
+
             formatted_info += "`{}`\n".format(
                 f"{agent_name} "
                 f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
@@ -117,6 +140,10 @@ class Match:
                 formatted_info += "`{}`\n".format(
                     f"[{rank_in_tier}/99] " f"[{mmr_change:+d}]"
                 )
+
+            if melee_info:
+                formatted_info += "`{}`\n".format(f"{melee_info}")
+            formatted_info += "\n"
 
         blue_wins = next(
             team["rounds"]["won"]
@@ -201,8 +228,8 @@ class Match:
 
     async def get_match_by_id(self, matchid):
         url = url_json["get_match_by_id"].format(region=self.region, matchid=matchid)
-        matches_data = await fetch_json(url)
-        return matches_data
+        self.last_match_data = await fetch_json(url)
+        return self.last_match_data
 
     def save_matches_to_file(self, data, file_path="./testcase/match_info.json"):
         with open(file_path, "w", encoding="utf-8") as file:

@@ -8,9 +8,10 @@ def help_message():
     print("Usage:\npython3 -m testcase.test_val_api.py [API Command] Account Tag")
     print(
         "[API Command]: [get_account, get_rank, get_last_match_id",
-        "get_last_match, get_five_match_id]",
+        "get_last_match, get_five_match_id, get_melee_killer]",
     )
     print("python3 -m testcase.test_val_api.py get_match_by_id [MATCHID]")
+    print("python3 -m testcase.test_val_api.py get_melee_killer [MATCHID]")
 
 
 async def main():
@@ -36,6 +37,9 @@ async def main():
     elif case == "get_match_by_id":
         data = await match.get_match_by_id(sys.argv[4])
         match.save_matches_to_file(data)
+    elif case == "get_melee_killer":
+        data = await match.get_match_by_id(sys.argv[4])
+        print(match.check_melee_info())
     else:
         help_message()
         sys.exit(1)
