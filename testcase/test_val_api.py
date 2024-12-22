@@ -49,10 +49,15 @@ async def main():
             data = await match.get_matches_v3_by_api()
             match.save_matches_to_file(data, "./testcase/match_v3.json")
             print("Check data in ./testcase/match_v3.json")
+        elif case == "get_10_matches_melee_info":
+            stats = await player.get_match_stats()
+            data = await player.get_10_matches_melee_info()
+            print(data)
         else:
             help_message()
             sys.exit(1)
     except Exception as e:
+        print(e)
         help_message()
         sys.exit(1)
 

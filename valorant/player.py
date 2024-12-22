@@ -1,6 +1,7 @@
 import os
 import aiohttp
 import discord
+from .match import Match
 from .match_stats import MatchStats
 from .api import fetch_json, url_json
 
@@ -13,6 +14,9 @@ class ValorantPlayer:
         self.account_data = None
         self.rank_data = None
         self.match_stats = MatchStats()
+        self.match = Match(player_name, player_tag, region="ap")
+        self.competitive_matches_id = []
+        self.unrated_matches_id = []
 
     async def get_account_by_api(self):
         url = url_json["account"].format(
@@ -47,11 +51,39 @@ class ValorantPlayer:
         matches = matches_data.get("data", [])
 
         for match in matches:
-            if match["meta"]["mode"] == "Deathmatch":
-                continue
-            self.match_stats.update_stats(match)
+            mode = match["meta"]["mode"]
+            if mode == "Competitive" and len(self.competitive_matches_id) < 10:
+                self.competitive_matches_id.append(match["meta"]["id"])
+                self.match_stats.update_stats(match)
+
+        for match in matches:
+            mode = match["meta"]["mode"]
+            if (
+                mode == "Unrated"
+                and len(self.competitive_matches_id) + len(self.unrated_matches_id) < 10
+            ):
+                self.unrated_matches_id.append(match["meta"]["id"])
+                self.match_stats.update_stats(match)
 
         return self.match_stats.get_summary()
+
+    async def get_10_matches_melee_info(self):
+        melee_killers_count, melee_victims_count = 0, 0
+        all_match_ids = self.competitive_matches_id + self.unrated_matches_id
+
+        for match_id in all_match_ids:
+            await self.match.get_match_by_id(match_id)
+            melee_killers, melee_victims = self.match.check_melee_info()
+
+            player_name_lower = self.player_name.lower()
+
+            if any(player.lower() == player_name_lower for player in melee_killers):
+                melee_killers_count += 1
+
+            if any(player.lower() == player_name_lower for player in melee_victims):
+                melee_victims_count += 1
+
+        return melee_killers_count, melee_victims_count
 
     async def get_player_info(self):
         account_data = await self.get_account_by_api()
@@ -63,6 +95,11 @@ class ValorantPlayer:
             return {"error": "Unable to fetch rank data."}
 
         stats = await self.get_match_stats()
+
+        melee_killers_count, melee_victims_count = (
+            await self.get_10_matches_melee_info()
+        )
+
         if not stats:
             return {"error": "Unable to fetch match stats."}
 
@@ -78,12 +115,15 @@ class ValorantPlayer:
         player_card = account_data["card"]["small"]
 
         formatted_info = (
-            f"Account Level: {account_data['account_level']}\n\n"
+            f"Account Level: {account_data['account_level']}\n"
+            f"### Info in 10 Games\n"
             f"Lowest Kill: {lowest_kill}\n"
             f"Highest Death: {highest_death}\n\n"
             f"Highest HS Rate: {highest_ratio}%\n"
             f"Lowest HS Rate: {lowest_ratio}%\n"
-            f"Avg. HS Rate (100 Games): {average_headshot_ratio}%\n"
+            f"Avg. HS Rate: {average_headshot_ratio}%\n\n"
+            f"Knifed: {melee_killers_count} Times\n"
+            f"Got knifed: {melee_victims_count} Times\n"
             f"### Rank Info:\n"
             f"Ranking in Tier: {rank_data['ranking_in_tier']}\n"
             f"Last Game: {rank_data['mmr_change_to_last_game']}\n"

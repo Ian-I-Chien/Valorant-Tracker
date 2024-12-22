@@ -4,7 +4,6 @@ import math
 import time
 import asyncio
 import discord
-from .player import ValorantPlayer
 from .api import fetch_json, url_json
 
 
@@ -53,6 +52,8 @@ class Match:
             key=lambda x: x["stats"]["score"],
             reverse=True,
         )
+
+        from .player import ValorantPlayer
 
         player_instances = [
             ValorantPlayer(player_name=p["name"], player_tag=p["tag"])
