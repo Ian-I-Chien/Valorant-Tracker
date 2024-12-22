@@ -1,6 +1,13 @@
+import os
+import time
+import asyncio
 import aiohttp
 from dotenv import load_dotenv
-import os
+
+MAX_REQUESTS_PER_MINUTE = 90
+TIME_WINDOW = 60
+
+request_times = []
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
@@ -18,9 +25,27 @@ url_json = {
 }
 
 
+async def check_rate_limit():
+
+    global request_times
+    current_time = time.time()
+
+    request_times = [t for t in request_times if current_time - t < TIME_WINDOW]
+
+    if len(request_times) >= MAX_REQUESTS_PER_MINUTE:
+        wait_time = TIME_WINDOW - (current_time - request_times[0])
+        print(f"Rate limit reached. Waiting for {wait_time:.2f} seconds.")
+        await asyncio.sleep(wait_time)
+        current_time = time.time()
+        request_times = [t for t in request_times if current_time - t < TIME_WINDOW]
+
+
 async def fetch_json(url, params=None):
+    await check_rate_limit()
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params) as response:
+            request_times.append(time.time())
+            print(request_times)
             if response.status == API_SUCCESS:
                 return await response.json()
             return None
