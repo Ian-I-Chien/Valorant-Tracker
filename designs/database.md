@@ -10,13 +10,11 @@ database are as follows.
 ### DB Table
 #### Structure:
 ```
-users {
-    Discord Cache ID (Primary Key),
-    Discord Account,
-    Discord Display Name,
-    Valorant Account,
-    Valorant PUUID,
-}
+CREATE TABLE discord_users (
+    DiscordCacheID VARCHAR(255) PRIMARY KEY,
+    DiscordAccount VARCHAR(255),
+    DiscordDisplayName VARCHAR(255)
+);
 ```
 #### Account
 Discord Cache ID
@@ -31,9 +29,12 @@ Discord Display Name
 
 #### Valorant Table
 ```
-valorant {
-    Discord Cache ID (Primary Key),
-    Valorant Account,
+CREATE TABLE valorant_accounts {
+    DiscordCacheID VARCHAR(255),
+    ValorantAccount VARCHAR(255),
+    ValorantPUUID VARCHAR(255) UNIQUE,
+    PRIMARY KEY (DiscordCacheID, ValorantAccount),
+    FOREIGN KEY (DiscordCacheID) REFERENCES discord_users(DiscordCacheID)
 }
 ```
 Valorant Account
@@ -44,28 +45,55 @@ Valorant PUUID
 - An unique PUUID for each Valorant account. This ID can be gained from Valorant API.
 - When a discord user register the Valorant account, this PUUID should also be added in the data base via Valorant API.
 
+#### Valorant Match Table
+```
+CREATE TABLE valorant_matches (
+    MatchID VARCHAR(255) PRIMARY KEY,
+    ValorantPUUID VARCHAR(255),
+    MatchData JSON,
+    MatchDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ValorantPUUID) REFERENCES valorant_accounts(ValorantPUUID)
+);
+```
+MatchID
+- Match PUUID
+
+Valorant PUUID
+- reference valorant accounts PUUID
+
+Match Data
+- match data from [match](https://api.henrikdev.xyz/valorant/v4/match/{region}/{matchid})
+
+Match Date
+- timestamp
+
+
 #### Nick Name
 ```
-nick names {
-    Discord Cache ID (Primary Key),
-    Nick Name,
-}
+CREATE TABLE nick_names (
+    NickNameID INT AUTO_INCREMENT PRIMARY KEY,
+    DiscordCacheID VARCHAR(255),
+    NickName VARCHAR(255),
+    FOREIGN KEY (DiscordCacheID) REFERENCES discord_users(DiscordCacheID)
+);
 ```
 Nick Name of the user
 - Nick name can be multiple for an Discord account
 
 #### Mention Related:
 ```
-mentions {
-    Discord Cache ID (Primary Key),
-    Mention ID,
-    Mentioned By ID,
-    Mention Type,
-    Mention Count,
-    Mentioned Time,    
-}
+CREATE TABLE mentions (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    MentionToID VARCHAR(255),
+    MentionedByID VARCHAR(255),
+    MentionType ENUM('PRAISE', 'INSULT') NOT NULL,
+    MentionCount INT,
+    MentionedTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (MentionedByID) REFERENCES discord_users(DiscordCacheID),
+    FOREIGN KEY (MentionToID) REFERENCES discord_users(DiscordCacheID)
+);
 ```
-Mention ID
+Mention to ID
 - The Discord user cache ID that you mentioned in your sentence
 
 Mentioned By ID
