@@ -107,8 +107,7 @@ class ValorantPlayer:
             average_headshot_ratio,
             highest_ratio,
             lowest_ratio,
-            highest_death,
-            lowest_kill,
+            highest_kills,
             average_kda,
         ) = stats
 
@@ -118,8 +117,7 @@ class ValorantPlayer:
         formatted_info = (
             f"Account Level: {account_data['account_level']}\n"
             f"### Info in 10 Games\n"
-            f"Lowest Kill: {lowest_kill}\n"
-            f"Highest Death: {highest_death}\n"
+            f"H Kills: {highest_kills}\n"
             f"Avg. KDA: {average_kda}\n\n"
             f"H HS: {highest_ratio}%\n"
             f"L HS: {lowest_ratio}%\n"

@@ -1,11 +1,10 @@
 class MatchStats:
     def __init__(self):
         self.highest_ratio = -1
-        self.highest_deaths = -1
         self.total_head = 0
         self.total_shots = 0
         self.total_kda = 0
-        self.lowest_kill = int(1e9)
+        self.highest_kills = -1
         self.lowest_ratio = int(1e9)
         self.total_matches = 0
 
@@ -28,8 +27,7 @@ class MatchStats:
         self.total_kda += match_kda
         self.total_matches += 1
 
-        self.lowest_kill = min(self.lowest_kill, kills)
-        self.highest_deaths = max(self.highest_deaths, deaths)
+        self.highest_kills = max(self.highest_kills, kills)
 
         self.total_head += head
         self.total_shots += total_shots_in_match
@@ -46,8 +44,7 @@ class MatchStats:
                 round(average_headshot_ratio, 2),
                 round(self.highest_ratio, 2),
                 round(self.lowest_ratio, 2),
-                self.highest_deaths,
-                self.lowest_kill,
+                self.highest_kills,
                 round(average_kda, 2),
             )
         else:

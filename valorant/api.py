@@ -45,7 +45,6 @@ async def fetch_json(url, params=None):
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params) as response:
             request_times.append(time.time())
-            print(request_times)
             if response.status == API_SUCCESS:
                 return await response.json()
             return None
