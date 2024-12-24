@@ -109,6 +109,7 @@ class ValorantPlayer:
             lowest_ratio,
             highest_death,
             lowest_kill,
+            average_kda,
         ) = stats
 
         tier_image_url = rank_data.get("images", {}).get("large", None)
@@ -118,10 +119,11 @@ class ValorantPlayer:
             f"Account Level: {account_data['account_level']}\n"
             f"### Info in 10 Games\n"
             f"Lowest Kill: {lowest_kill}\n"
-            f"Highest Death: {highest_death}\n\n"
-            f"Highest HS Rate: {highest_ratio}%\n"
-            f"Lowest HS Rate: {lowest_ratio}%\n"
-            f"Avg. HS Rate: {average_headshot_ratio}%\n\n"
+            f"Highest Death: {highest_death}\n"
+            f"Avg. KDA: {average_kda}\n\n"
+            f"H HS: {highest_ratio}%\n"
+            f"L HS: {lowest_ratio}%\n"
+            f"Avg. HS: {average_headshot_ratio}%\n\n"
             f"Knifed: {melee_killers_count} Times\n"
             f"Got knifed: {melee_victims_count} Times\n"
             f"### Rank Info:\n"
