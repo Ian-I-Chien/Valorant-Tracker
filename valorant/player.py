@@ -109,6 +109,7 @@ class ValorantPlayer:
             lowest_ratio,
             highest_kills,
             average_kda,
+            win_rate,
         ) = stats
 
         tier_image_url = rank_data.get("images", {}).get("large", None)
@@ -117,6 +118,7 @@ class ValorantPlayer:
         formatted_info = (
             f"Account Level: {account_data['account_level']}\n"
             f"### Info in 10 Games\n"
+            f"WIN Rate: {win_rate}%\n\n"
             f"H Kills: {highest_kills}\n"
             f"Avg. KDA: {average_kda}\n\n"
             f"H HS: {highest_ratio}%\n"

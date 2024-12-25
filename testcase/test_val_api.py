@@ -8,7 +8,7 @@ def help_message():
     print("Usage:\npython3 -m testcase.test_val_api [API Command] Account Tag")
     print(
         "[API Command]: [get_account, get_rank, get_last_match_id",
-        "get_last_match, get_five_match_id, get_melee_killer, get_stored_match_by_api], get_matches_v3_by_api",
+        "get_last_match, get_five_match_id, get_melee_killer, get_stored_match_by_api, get_matches_v3_by_api, get_stored_match]",
     )
     print("python3 -m testcase.test_val_api get_melee_killer Account Tag [MATCHID]")
 
@@ -25,6 +25,9 @@ async def main():
     try:
         if case == "get_account":
             print(await player.get_account_by_api())
+        elif case == "get_stored_match":
+            data = await player.get_stored_match_by_api()
+            match.save_matches_to_file(data, "./testcase/stored_match.json")
         elif case == "get_rank":
             print(await player.get_rank_by_api())
         elif case == "get_last_match_id":

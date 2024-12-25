@@ -7,8 +7,12 @@ class MatchStats:
         self.highest_kills = -1
         self.lowest_ratio = int(1e9)
         self.total_matches = 0
+        self.total_wins = 0
 
     def update_stats(self, match):
+        player_team = match["stats"]["team"]
+        red_score = match["teams"]["red"]
+        blue_score = match["teams"]["blue"]
         kills = match["stats"]["kills"]
         deaths = match["stats"]["deaths"]
         assists = match["stats"]["assists"]
@@ -36,16 +40,23 @@ class MatchStats:
             self.highest_ratio = max(self.highest_ratio, headshot_ratio_each_match)
             self.lowest_ratio = min(self.lowest_ratio, headshot_ratio_each_match)
 
+        if player_team == "Red" and red_score > blue_score:
+            self.total_wins += 1
+        elif player_team == "Blue" and blue_score > red_score:
+            self.total_wins += 1
+
     def get_summary(self):
         if self.total_shots > 0:
             average_headshot_ratio = (self.total_head / self.total_shots) * 100
             average_kda = self.total_kda / self.total_matches
+            win_rate = (self.total_wins / self.total_matches) * 100
             return (
                 round(average_headshot_ratio, 2),
                 round(self.highest_ratio, 2),
                 round(self.lowest_ratio, 2),
                 self.highest_kills,
                 round(average_kda, 2),
+                round(win_rate, 2),
             )
         else:
             return None
