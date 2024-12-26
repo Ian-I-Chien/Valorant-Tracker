@@ -4,6 +4,7 @@ import math
 import time
 import asyncio
 import discord
+from typing import Optional
 from .api import fetch_json, url_json
 
 
@@ -43,9 +44,107 @@ class Match:
                 melee_victims.append(victim_name)
         return melee_killers, melee_victims
 
+    def calculate_kast(self, match_data: dict = None) -> Optional[dict]:
+        """Calculate KAST from Henrikdev API v4_match
+
+        Args:
+            match_data (dict): match data
+
+        Returns:
+            dict: all players kast information
+        """
+        if match_data is None:
+            if self.last_match_data is None:
+                raise ValueError(f"calculate_kast match_data is null.")
+            match_data = self.last_match_data
+
+        data = match_data.get("data", None)
+        if data is None:
+            raise ValueError("calculate_kast data is null.")
+
+        players: list = data.get("players", None)
+        if players is None:
+            raise ValueError("calculate_kast players is null.")
+
+        rounds: list = data.get("rounds", None)
+        if rounds is None:
+            raise ValueError("calculate_kast rounds is null.")
+
+        kills: list = data.get("kills", None)
+        if kills is None:
+            raise ValueError("calculate_kast kills is null.")
+
+        players_rounds_performance = {}
+        for player in players:
+            puuid: str = player["puuid"]
+            players_rounds_performance[puuid] = []
+            for _ in range(len(rounds)):
+                players_rounds_performance[puuid].append(
+                    {
+                        "kill": 0,
+                        "assistant": 0,
+                        "death": 0,
+                        "trade": 0,
+                    }
+                )
+
+        kills = sorted(kills, key=lambda x: x["time_in_match_in_ms"])
+        killer_list = {}  # who kill victim, which round and when
+        round_temp = -1
+        for kill in kills:
+            round: int = kill["round"]
+            time_in_round_in_ms: int = int(kill["time_in_round_in_ms"])
+            killer: str = kill["killer"]["puuid"]
+            victim: str = kill["victim"]["puuid"]
+            assistants: list = kill["assistants"]
+
+            # reset killer lists
+            if round_temp != round:
+                round_temp = round
+                killer_list.clear()
+
+            # got victim
+            players_rounds_performance[victim][round]["death"] += 1
+
+            # got trade
+            if victim in killer_list:
+                for victim_of_killer in killer_list[victim]:
+                    if (time_in_round_in_ms - victim_of_killer["time"]) <= 3000:
+                        players_rounds_performance[victim_of_killer["victim"]][round][
+                            "trade"
+                        ] += 1
+
+            # got kill
+            players_rounds_performance[killer][round]["kill"] += 1
+            if not killer in killer_list:
+                killer_list[killer] = list()
+            killer_list[killer].append({"victim": victim, "time": time_in_round_in_ms})
+
+            # got assistant
+            for assistant in assistants:
+                assistanter: str = assistant["puuid"]
+                players_rounds_performance[assistanter][round]["assistant"] += 1
+
+        result = {}
+        for player_uuid, rounds_info in players_rounds_performance.items():
+            kast_with_round = 0
+            for round in range(len(rounds)):
+                one_round_data = rounds_info[round]
+                got_kill: int = one_round_data["kill"]
+                got_death: int = one_round_data["death"]
+                got_assistant: int = one_round_data["assistant"]
+                got_trade: int = one_round_data["trade"]
+
+                if got_kill > 0 or got_assistant > 0 or got_trade > 0 or got_death == 0:
+                    kast_with_round += 1
+            player_kast = (kast_with_round / len(rounds)) * 100
+            result[player_uuid] = player_kast
+        return result
+
     async def sorted_formatted_player(self):
 
         melee_killers, melee_victims = self.check_melee_info()
+        players_kast = self.calculate_kast()
 
         sorted_players = sorted(
             self.last_match_data["data"]["players"],
@@ -120,6 +219,7 @@ class Match:
                 f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
                 f"[{headshot_percentage:.2f}%] "
                 f"[{score}]"
+                f"[KAST: {players_kast[player['puuid']]}]"
             )
 
             if (
