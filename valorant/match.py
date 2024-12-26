@@ -218,8 +218,8 @@ class Match:
                 f"{agent_name} "
                 f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
                 f"[{headshot_percentage:.2f}%] "
-                f"[{score}]"
-                f"[KAST: {players_kast[player['puuid']]}%]"
+                f"[{score}] "
+                f"[KAST: {players_kast[player['puuid']]:.2f}%]"
             )
 
             if (
