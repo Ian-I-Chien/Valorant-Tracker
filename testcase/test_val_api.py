@@ -56,6 +56,11 @@ async def main():
             stats = await player.get_match_stats()
             data = await player.get_10_matches_melee_info()
             print(data)
+        elif case == "get_kast":
+            await match.get_last_match_id()
+            await match.get_stored_match_by_id_by_api()
+            data = match.calculate_kast()
+            print(data)
         else:
             help_message()
             sys.exit(1)
