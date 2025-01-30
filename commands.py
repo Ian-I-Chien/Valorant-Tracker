@@ -4,6 +4,8 @@ from database.model_orm import UserOrm
 from file_manager import load_json, save_json
 from datetime import datetime
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
+from valorant.player import ValorantPlayer
+from utils import parse_player_name
 
 CONSTANTS_FILE = "config/constants.json"
 USER_DATA_FILE = "data/user_data.json"
@@ -230,25 +232,44 @@ async def auto_nlp_process(
 async def registered_with_valorant_account(
     interaction: discord.Interaction, valorant_account
 ):
+
+    player_name, player_tag = await parse_player_name(interaction, valorant_account)
+    if not player_name or not player_tag:
+        await interaction.edit_original_response(
+            content="Failed to parse Valorant account. Please ensure the account format is correct."
+        )
+
     dc_id = interaction.user.id
     dc_global_name = interaction.user.global_name
     dc_display_name = interaction.user.display_name
-    val_account = valorant_account.replace(" ", "")
+
+    try:
+        player = ValorantPlayer(player_name, player_tag)
+        account_data = await player.get_account_by_api()
+        if account_data is None:
+            await interaction.edit_original_response(
+                content=f"Failed to fetch account: {valorant_account}"
+            )
+            return
+    except IntegrityError as e:
+        await interaction.edit_original_response(
+            content=f"Failed to fetch account: {str(e)}"
+        )
+        return
+
     async with UserOrm() as user_model:
         try:
             await user_model.register_user(
                 dc_id=dc_id,
                 dc_global_name=dc_global_name,
                 dc_display_name=dc_display_name,
-                val_account=val_account,
+                val_account=valorant_account,
+                val_puuid=str(account_data["puuid"]),
             )
-            await interaction.response.send_message(
-                f"{dc_display_name} **registered** valorant account: **{valorant_account}**",
-                ephemeral=True,
+            await interaction.edit_original_response(
+                content=f"{dc_display_name} Registered {valorant_account} successfully!"
             )
-        except IntegrityError:
-            await user_model.update_user(dc_id=dc_id, val_account=val_account)
-            await interaction.response.send_message(
-                f"{dc_display_name} **updated** valorant account: **{valorant_account}**",
-                ephemeral=True,
+        except IntegrityError as e:
+            await interaction.edit_original_response(
+                content=f"Failed to register: {str(e)}"
             )

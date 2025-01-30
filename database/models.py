@@ -1,18 +1,21 @@
 from tortoise import fields
 from database.const import ChatType
 from database.database import BaseModel
+from enum import Enum
+
+
+class MentionTypeEnum(Enum):
+    PRAISE = "PRAISE"
+    INSULT = "INSULT"
 
 
 class UserInfo(BaseModel):
     class Meta:
         table = "user_info"
 
-    dc_id = fields.CharField(max_length=255, unique=True)
+    dc_id = fields.CharField(max_length=255)
     dc_global_name = fields.CharField(max_length=255, null=True)
     dc_display_name = fields.CharField(max_length=255, null=True)
-    mentioned_keyword = fields.JSONField(null=True)
-    val_account = fields.CharField(max_length=255, default=None, null=True)
-    val_puuid = fields.CharField(max_length=255, default=None, null=True)
 
 
 class ValorantAccount(BaseModel):
@@ -21,7 +24,7 @@ class ValorantAccount(BaseModel):
 
     valorant_account = fields.CharField(max_length=255)
     valorant_puuid = fields.CharField(max_length=255, unique=True)
-    discord_cache_id = fields.ForeignKeyField(
+    dc_id = fields.ForeignKeyField(
         "models.UserInfo", related_name="valorant_accounts", on_delete=fields.CASCADE
     )
 
@@ -49,7 +52,7 @@ class NickName(BaseModel):
 
     nickname_id = fields.IntField(auto_increment=True, primary_key=True)
     nickname = fields.CharField(max_length=255)
-    discord_cache_id = fields.ForeignKeyField(
+    dc_id = fields.ForeignKeyField(
         "models.UserInfo", related_name="nicknames", on_delete=fields.CASCADE
     )
 
@@ -59,7 +62,7 @@ class Mention(BaseModel):
         table = "mentions"
 
     id = fields.IntField(auto_increment=True, primary_key=True)
-    mention_type = fields.CharEnumField(enum_type=["PRAISE", "INSULT"])
+    mention_type = fields.CharEnumField(enum_type=MentionTypeEnum)
     mention_count = fields.IntField()
     mentioned_time = fields.DatetimeField(auto_now_add=True)
     mentioned_to = fields.ForeignKeyField(

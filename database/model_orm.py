@@ -1,32 +1,70 @@
 from tortoise.exceptions import IntegrityError
 from database.database import BaseOrm
-from database.models import UserInfo
+from database.models import UserInfo, ValorantAccount
+from tortoise.transactions import atomic
 
 
 class UserOrm(BaseOrm):
     def __init__(self):
         self._model = UserInfo
+        self._val_account = ValorantAccount
 
     async def get_all(self):
-        return await self._model.all().values()
+        users = await self._model.all().prefetch_related("valorant_accounts")
+        result = []
+        for user in users:
+            user_data = {
+                "id": user.id,
+                "dc_id": user.dc_id,
+                "dc_global_name": user.dc_global_name,
+                "dc_display_name": user.dc_display_name,
+                "valorant_accounts": [
+                    {
+                        "id": account.id,
+                        "valorant_account": account.valorant_account,
+                        "valorant_puuid": account.valorant_puuid,
+                    }
+                    for account in user.valorant_accounts
+                ],
+            }
+            result.append(user_data)
+        return result
 
+    @atomic()
     async def register_user(
-        self, dc_id: str, dc_global_name: str, dc_display_name: str, val_account=None
+        self,
+        dc_id: str,
+        dc_global_name: str,
+        dc_display_name: str,
+        val_account=None,
+        val_puuid=None,
     ):
         try:
             await self._model.create(
                 dc_id=dc_id,
                 dc_global_name=dc_global_name,
                 dc_display_name=dc_display_name,
-                val_account=val_account,
             )
-        except IntegrityError:
-            raise IntegrityError(
-                f"Error!User {dc_id} already exists!If want to update, please use update_user."
-            )
+            if val_account and val_puuid:
+                await self.register_valorant_account(dc_id, val_account, val_puuid)
+        except IntegrityError as e:
+            raise IntegrityError(f"{str(e)}")
+
+    async def register_valorant_account(
+        self, dc_id: str, valorant_account: str, valorant_puuid: str
+    ):
+        user_info = await self._model.filter(dc_id=dc_id).first()
+        if not user_info:
+            raise IntegrityError(f"User with dc_id {dc_id} does not exist!")
+
+        await self._val_account.create(
+            valorant_account=valorant_account,
+            valorant_puuid=valorant_puuid,
+            dc_id=user_info,
+        )
 
     async def get_user(self, account: str, as_dict=True):
-        data = await self._model.get(account=account)
+        data = await self._model.get(dc_id=account)
         return data.to_dict() if as_dict else data
 
     async def update_user(
@@ -34,9 +72,6 @@ class UserOrm(BaseOrm):
         dc_id: str,
         dc_global_name: str = None,
         dc_display_name: str = None,
-        keyword: str = None,
-        val_account: str = None,
-        val_puuid: str = None,
     ):
         original_data = await self._model.get(dc_id=dc_id)
         if not original_data:
@@ -45,10 +80,7 @@ class UserOrm(BaseOrm):
             original_data.dc_global_name = dc_global_name
         if dc_display_name:
             original_data.dc_display_name = dc_display_name
-        if keyword:
-            original_data.keyword = keyword
-        if val_account:
-            original_data.val_account = val_account
-        if val_puuid:
-            original_data.val_puuid = val_puuid
         await original_data.save()
+
+    async def get_valorant_accounts(self, dc_id: str):
+        return await self._val_account.filter(dc_id=dc_id).all()
