@@ -1,11 +1,14 @@
 import discord
 from tortoise.exceptions import IntegrityError
-from database.model_orm import UserOrm
+from database.model_orm import UserOrm, MatchOrm
 from file_manager import load_json, save_json
 from datetime import datetime
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
+from valorant.match import Match
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
+import traceback
+from collections import deque
 
 CONSTANTS_FILE = "config/constants.json"
 USER_DATA_FILE = "data/user_data.json"
@@ -58,6 +61,61 @@ def reset_daily_mentions():
         user_info["mentions"] = 0
         user_info["last_reset_date"] = current_date
     save_json(USER_DATA_FILE, user_data)
+
+
+async def handle_polling_matches(interaction: discord.Interaction = None):
+    try:
+        async with UserOrm() as user_model:
+            users_data = await user_model.get_all()
+
+            for user_data in users_data:
+                for account_data in user_data["valorant_accounts"]:
+                    try:
+                        player_name, player_tag = account_data[
+                            "valorant_account"
+                        ].split("#")
+                        valorant_puuid = account_data["valorant_puuid"]
+
+                        match = Match(player_name, player_tag)
+                        last_match_id = await match.get_last_match_id()
+
+                        if last_match_id:
+                            async with MatchOrm() as match_model:
+                                match_data = await match_model.get_match_data(
+                                    last_match_id, valorant_puuid
+                                )
+
+                                if match_data:
+                                    print(
+                                        f"Match {last_match_id} already exists for {player_name}, no need to fetch."
+                                    )
+                                else:
+                                    print(
+                                        f"Fetching new match data {last_match_id} for {player_name}..."
+                                    )
+                                    match_data = (
+                                        await match.get_stored_match_by_id_by_api()
+                                    )
+                                    match.last_match_data = match_data
+                                    await match_model.save_match(
+                                        match_id=last_match_id,
+                                        valorant_puuid=valorant_puuid,
+                                        match_data=match_data,
+                                    )
+                                    print(
+                                        f"Saved new match {last_match_id} for {account_data['valorant_account']}"
+                                    )
+                                    return await match.get_last_match()
+
+                    except Exception as e:
+                        print(
+                            f"Error processing account {account_data['valorant_account']}: {e}"
+                        )
+                        traceback.print_exc()
+
+    except Exception as e:
+        print(f"Critical error in handle_polling_matches: {e}")
+        traceback.print_exc()
 
 
 async def handle_rank_command(interaction: discord.Interaction):

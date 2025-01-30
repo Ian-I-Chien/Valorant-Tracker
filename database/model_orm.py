@@ -1,7 +1,8 @@
 from tortoise.exceptions import IntegrityError
 from database.database import BaseOrm
-from database.models import UserInfo, ValorantAccount
+from database.models import UserInfo, ValorantAccount, ValorantMatch
 from tortoise.transactions import atomic
+from tortoise.exceptions import DoesNotExist
 
 
 class UserOrm(BaseOrm):
@@ -84,3 +85,67 @@ class UserOrm(BaseOrm):
 
     async def get_valorant_accounts(self, dc_id: str):
         return await self._val_account.filter(dc_id=dc_id).all()
+
+
+class MatchOrm(BaseOrm):
+    def __init__(self):
+        self._model = ValorantMatch
+
+    async def match_exists(self, match_id: str):
+        return await self._model.filter(match_id=match_id).first()
+
+    async def get_match_data(self, match_id: str, valorant_puuid: str):
+        match = await self.match_exists(match_id)
+
+        if match:
+            existing_match = await self._model.filter(
+                match_id=match_id, valorant_puuid=valorant_puuid
+            ).first()
+
+            if existing_match:
+                return existing_match.match_data
+
+            print(
+                f"Match data does not exist for {valorant_puuid}, storing new data..."
+            )
+            match_data = match.match_data
+            saved_match_data = await self.save_match(
+                match_id, valorant_puuid, match_data
+            )
+            if saved_match_data:
+                return saved_match_data
+
+        return None
+
+    async def save_match(self, match_id: str, valorant_puuid: str, match_data: dict):
+        try:
+            valorant_account = await ValorantAccount.get(valorant_puuid=valorant_puuid)
+
+            created_match = await self._model.create(
+                match_id=match_id,
+                valorant_puuid=valorant_puuid,
+                match_data=match_data,
+                valorant_account=valorant_account,
+            )
+            return created_match.match_data
+
+        except ValorantAccount.DoesNotExist:
+            print(f"Valorant account with puuid {valorant_puuid} does not exist.")
+            return None
+
+    async def get_all(self):
+        matches = await self._model.all().prefetch_related("valorant_account")
+        result = []
+        for match in matches:
+            match_data = {
+                "match_id": match.match_id,
+                "valorant_puuid": match.valorant_puuid,
+                "match_data": match.match_data,
+                "match_date": match.match_date,
+                "valorant_account": {
+                    "valorant_account": match.valorant_account.valorant_account,
+                    "valorant_puuid": match.valorant_account.valorant_puuid,
+                },
+            }
+            result.append(match_data)
+        return result

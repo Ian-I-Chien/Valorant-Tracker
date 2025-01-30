@@ -1,7 +1,7 @@
 import os
 import discord
 from dotenv import load_dotenv
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 from valorant.match import Match
 from valorant.player import ValorantPlayer
@@ -13,12 +13,14 @@ from commands import (
     check_and_reset_mentions,
     auto_nlp_process,
     registered_with_valorant_account,
+    handle_polling_matches,
 )
 from model.toxic_detector import ToxicMessageProcessor
 
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL = os.getenv("CHANNEL_ID")
 
 toxic_message_processor = ToxicMessageProcessor()
 
@@ -26,6 +28,16 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="/", intents=intents)
+
+
+@tasks.loop(seconds=30)
+async def polling_matches():
+    polling_info = await handle_polling_matches()
+    if polling_info:
+        channel = bot.get_channel(int(CHANNEL))
+        await channel.send(embed=polling_info)
+    else:
+        print("Waiting 30 secs")
 
 
 @bot.event
@@ -42,6 +54,7 @@ async def on_ready():
         print(f"- {command.name}")
 
     await bot.change_presence(activity=discord.Game("看誰在壞"))
+    polling_matches.start()
 
 
 @bot.tree.command(name="rank", description="Historical Ranking")

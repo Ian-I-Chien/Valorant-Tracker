@@ -33,7 +33,7 @@ class ValorantMatch(BaseModel):
     class Meta:
         table = "valorant_matches"
 
-    match_id = fields.CharField(max_length=255, primary_key=True)
+    match_id = fields.CharField(max_length=255)
     valorant_puuid = fields.CharField(max_length=255)
     match_data = fields.JSONField()
     match_date = fields.DatetimeField(auto_now_add=True)
