@@ -31,7 +31,7 @@ async def check_rate_limit():
     current_time = time.time()
 
     request_times = [t for t in request_times if current_time - t < TIME_WINDOW]
-
+    print("Request Times Length:", len(request_times))
     if len(request_times) >= MAX_REQUESTS_PER_MINUTE:
         wait_time = TIME_WINDOW - (current_time - request_times[0])
         print(f"Rate limit reached. Waiting for {wait_time:.2f} seconds.")

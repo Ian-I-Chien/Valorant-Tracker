@@ -6,6 +6,7 @@ from discord import app_commands
 from valorant.match import Match
 from valorant.player import ValorantPlayer
 from utils import parse_player_name
+import sys
 from commands import (
     handle_rank_command,
     auto_handle_praise,
@@ -22,6 +23,9 @@ load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL = os.getenv("CHANNEL_ID")
 
+if not TOKEN or not CHANNEL:
+    sys.exit(1)
+
 toxic_message_processor = ToxicMessageProcessor()
 
 intents = discord.Intents.default()
@@ -32,12 +36,11 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 
 @tasks.loop(seconds=30)
 async def polling_matches():
+    print("Start Polling 30 secs...")
     polling_info = await handle_polling_matches()
     if polling_info:
         channel = bot.get_channel(int(CHANNEL))
         await channel.send(embed=polling_info)
-    else:
-        print("Waiting 30 secs")
 
 
 @bot.event
