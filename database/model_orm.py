@@ -8,7 +8,7 @@ from tortoise.exceptions import DoesNotExist
 class UserOrm(BaseOrm):
     def __init__(self):
         self._model = UserInfo
-        self._val_account = ValorantAccount
+        self._val_account_orm = ValorantAccountOrm()
 
     async def get_all(self):
         users = await self._model.all().prefetch_related("valorant_accounts")
@@ -41,28 +41,17 @@ class UserOrm(BaseOrm):
         val_puuid=None,
     ):
         try:
-            await self._model.create(
+            user = await self._model.create(
                 dc_id=dc_id,
                 dc_global_name=dc_global_name,
                 dc_display_name=dc_display_name,
             )
             if val_account and val_puuid:
-                await self.register_valorant_account(dc_id, val_account, val_puuid)
+                await self._val_account_orm.register_valorant_account(
+                    dc_id, val_account, val_puuid
+                )
         except IntegrityError as e:
             raise IntegrityError(f"{str(e)}")
-
-    async def register_valorant_account(
-        self, dc_id: str, valorant_account: str, valorant_puuid: str
-    ):
-        user_info = await self._model.filter(dc_id=dc_id).first()
-        if not user_info:
-            raise IntegrityError(f"User with dc_id {dc_id} does not exist!")
-
-        await self._val_account.create(
-            valorant_account=valorant_account,
-            valorant_puuid=valorant_puuid,
-            dc_id=user_info,
-        )
 
     async def get_user(self, account: str, as_dict=True):
         data = await self._model.get(dc_id=account)
@@ -83,8 +72,27 @@ class UserOrm(BaseOrm):
             original_data.dc_display_name = dc_display_name
         await original_data.save()
 
+
+class ValorantAccountOrm(BaseOrm):
+    def __init__(self):
+        self._model = ValorantAccount
+
+    @atomic()
+    async def register_valorant_account(
+        self, dc_id: str, valorant_account: str, valorant_puuid: str
+    ):
+        user_info = await UserInfo.filter(dc_id=dc_id).first()
+        if not user_info:
+            raise IntegrityError(f"User with dc_id {dc_id} does not exist!")
+
+        await self._model.create(
+            valorant_account=valorant_account,
+            valorant_puuid=valorant_puuid,
+            dc_id=user_info,
+        )
+
     async def get_valorant_accounts(self, dc_id: str):
-        return await self._val_account.filter(dc_id=dc_id).all()
+        return await self._model.filter(dc_id=dc_id).all()
 
 
 class MatchOrm(BaseOrm):
