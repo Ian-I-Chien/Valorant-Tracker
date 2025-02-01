@@ -105,7 +105,7 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                                     print(
                                         f"Saved new match {last_match_id} for {account_data['valorant_account']}"
                                     )
-                                    return await match.get_last_match()
+                                    return await match.sorted_formatted_player()
 
                     except Exception as e:
                         print(
