@@ -91,8 +91,8 @@ class ValorantAccountOrm(BaseOrm):
             dc_id=user_info,
         )
 
-    async def get_valorant_accounts(self, dc_id: str):
-        return await self._model.filter(dc_id=dc_id).all()
+    async def get_valorant_accounts(self, val_account: str):
+        return await self._model.filter(valorant_account=val_account).all()
 
 
 class MatchOrm(BaseOrm):

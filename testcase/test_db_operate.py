@@ -1,6 +1,6 @@
 import pytest
 
-from database.model_orm import UserOrm, MatchOrm
+from database.model_orm import UserOrm, MatchOrm, ValorantAccountOrm
 
 #  PYTHONPATH=$(pwd) pytest -s testcase/test_db_operate.py::test_get_all_usr
 
@@ -17,8 +17,7 @@ async def test_get_all_user():
 
 
 @pytest.mark.asyncio
-async def test_get_user():
-    print("")
-    async with UserOrm() as user_model:
-        data = await user_model.get_user(account="test")
+async def test_get_valorant_account():
+    async with ValorantAccountOrm() as user_model:
+        data = await user_model.get_valorant_accounts(val_account="yui#1121")
         print(f"取得資料:{data}")
