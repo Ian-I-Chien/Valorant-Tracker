@@ -210,7 +210,8 @@ class Match:
                 melee_info += f"[Get Knifed x{melee_victim_count}] :<"
 
             formatted_info += "`{}`\n".format(
-                f"[{player['team_id']}] [{current_tier}] "
+                f"[{'🔵' if player['team_id'] == 'Blue' else '🔴'}] "
+                f"[{current_tier}] "
                 f"[{player['name']}#{player['tag']}]"
             )
 
