@@ -270,7 +270,16 @@ class Match:
         map_id = self.last_match_data["data"]["metadata"]["map"]["id"]
         image_url = f"https://media.valorant-api.com/maps/{map_id}/listviewicon.png"
 
-        embed = discord.Embed(title=title_info, color=discord.Color.blurple())
+        color = (
+            discord.Color.blue()
+            if winning_team == "BLUE"
+            else (
+                discord.Color.red()
+                if winning_team == "RED"
+                else discord.Color.greyple()
+            )
+        )
+        embed = discord.Embed(title=title_info, color=color)
         embed.set_image(url=image_url)
         embed.description = formatted_info
         return embed
