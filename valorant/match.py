@@ -6,6 +6,7 @@ import asyncio
 import discord
 from typing import Optional
 from .api import fetch_json, url_json
+from database.model_orm import ValorantAccountOrm
 
 
 class Match:
@@ -168,6 +169,8 @@ class Match:
             zip(sorted_players, rank_data_dicts)
         ):
 
+            player_name = f"{player['name']}#{player['tag']}"
+            accounts = None
             current_tier = (
                 rank_data_dict.get("currenttierpatched", "Unrated")
                 if rank_data_dict
@@ -209,11 +212,18 @@ class Match:
             if melee_victim_count > 0:
                 melee_info += f"[Get Knifed x{melee_victim_count}] :<"
 
-            formatted_info += "`{}`\n".format(
+            formatted_info += "`{}` ".format(
                 f"[{'🔵' if player['team_id'] == 'Blue' else '🔴'}] "
-                f"[{current_tier}] "
-                f"[{player['name']}#{player['tag']}]"
+                f"[{current_tier}]"
             )
+
+            async with ValorantAccountOrm() as account_model:
+                accounts = await account_model.get_valorant_accounts(player_name)
+
+                if accounts:
+                    formatted_info += "**`{}`**\n".format(f"[{player_name}]")
+                else:
+                    formatted_info += "`{}`\n".format(f"[{player_name}]")
 
             formatted_info += "`{}`\n".format(
                 f"{agent_name} "
