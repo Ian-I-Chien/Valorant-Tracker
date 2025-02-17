@@ -92,7 +92,7 @@ class ValorantAccountOrm(BaseOrm):
         )
 
     async def get_valorant_accounts(self, val_account: str):
-        return await self._model.filter(valorant_account=val_account).all()
+        return await self._model.filter(valorant_account__iexact=val_account).all()
 
 
 class MatchOrm(BaseOrm):
