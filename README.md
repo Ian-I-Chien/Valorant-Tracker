@@ -36,21 +36,26 @@ To use the bot, simply type the following commands in your Discord server where 
 ## Bot Commands on Discord
 [INFO](https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/designs/info.md)
 ```
-/info Valorant-User-Name#User-Tage
+/info Valorant-User-Name#User-Tag
 
 ```
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
 </p>
 
-## Bot Commands on Discord
 ```
-/lm Valorant-User-Name#User-Tage
+/lm Valorant-User-Name#User-Tag
 ```
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/lm_output_example.png" alt="Output Example" width="300"/>
 </p>
 
+
+```
+/whoami
+```
+
+To check Valorant account info which is linked to the discord account in the database. This command can only used after a discord user is registered (/reg_val) valorant account.
 
 
 ### Insult a User:

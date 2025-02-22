@@ -118,6 +118,11 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
         traceback.print_exc()
 
 
+async def whoami(interaction: discord.Interaction):
+    # To handle whoami command
+    return
+
+
 async def handle_rank_command(interaction: discord.Interaction):
     sorted_insults = sorted(
         (

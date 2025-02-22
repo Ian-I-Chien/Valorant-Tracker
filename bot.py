@@ -65,6 +65,12 @@ async def rank(interaction: discord.Interaction):
     await handle_rank_command(interaction)
 
 
+@bot.tree.command(name="whoami", description="Who Am I")
+async def rank(interaction: discord.Interaction):
+    # await whoami(interaction)
+    return
+
+
 @bot.tree.command(name="info", description="Player Information")
 async def info(interaction: discord.Interaction, player_full_name: str):
     player_name, player_tag = await parse_player_name(interaction, player_full_name)
