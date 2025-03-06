@@ -3,11 +3,12 @@
 ## Description
 NoBully is a [Discord bot](https://discord.com/developers/docs/intro) designed to prevent bullying and toxic behavior during gaming sessions, particularly in games like Valorant.
 It aims to foster a healthier and more respectful gaming environment by tracking player interactions and providing useful features to manage mentions and interactions.
-
 Currently, it can only track mentions of specific users, but in the future, we hope to allow each user to have their own individual mention count.
 We calculate both daily and historical counts, and use the historical counts for rankings. The daily count is reset at the start of each day.
 
-In the future, we plan to integrate the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
+This bot can also automatically track match records for Valorant players who are registered (/reg_val) in the database.
+
+We have integrated the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
 
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
@@ -49,13 +50,16 @@ To use the bot, simply type the following commands in your Discord server where 
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/lm_output_example.png" alt="Output Example" width="300"/>
 </p>
-
+```
+/reg_val Valorant-User-Name#User-Tag
+```
+Register a Valorant account with your Discord account to automatically track matches.
 
 ```
 /whoami
 ```
-
-To check Valorant account info which is linked to the discord account in the database. This command can only used after a discord user is registered (/reg_val) valorant account.
+To check Valorant account info which is linked to the discord account in the database.
+This command can only used after a discord user is registered (/reg_val) valorant account.
 
 
 ### Insult a User:
