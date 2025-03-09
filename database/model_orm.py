@@ -85,14 +85,25 @@ class ValorantAccountOrm(BaseOrm):
         if not user_info:
             raise IntegrityError(f"User with dc_id {dc_id} does not exist!")
 
-        await self._model.create(
-            valorant_account=valorant_account,
-            valorant_puuid=valorant_puuid,
-            dc_id=user_info,
-        )
+        existing_entry = await self._model.filter(valorant_puuid=valorant_puuid).first()
+
+        if existing_entry:
+            existing_entry.valorant_account = valorant_account
+            existing_entry.dc_id = user_info
+            await existing_entry.save()
+        else:
+            await self._model.create(
+                valorant_account=valorant_account,
+                valorant_puuid=valorant_puuid,
+                dc_id=user_info,
+            )
 
     async def get_valorant_accounts(self, val_account: str):
         return await self._model.filter(valorant_account__iexact=val_account).all()
+
+    async def check_if_puuid_exist(self, valorant_puuid: str) -> bool:
+        existing_entry = await self._model.filter(valorant_puuid=valorant_puuid).first()
+        return existing_entry is not None
 
 
 class MatchOrm(BaseOrm):
