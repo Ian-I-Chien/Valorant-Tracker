@@ -89,8 +89,10 @@ class ValorantAccountOrm(BaseOrm):
 
         if existing_entry:
             existing_entry.valorant_account = valorant_account
-            existing_entry.dc_id = user_info
             await existing_entry.save()
+            print(
+                f"Account updated: {existing_entry.valorant_account} changed to {valorant_account}"
+            )
         else:
             await self._model.create(
                 valorant_account=valorant_account,
