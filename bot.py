@@ -21,9 +21,14 @@ from model.toxic_detector import ToxicMessageProcessor
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL = os.getenv("CHANNEL_ID")
+CHANNEL_IDS = [
+    channel_id.strip()
+    for channel_id in os.getenv("CHANNEL_ID", "").split(",")
+    if channel_id.strip()
+]
 
-if not TOKEN or not CHANNEL:
+
+if not TOKEN or not CHANNEL_IDS:
     sys.exit(1)
 
 toxic_message_processor = ToxicMessageProcessor()
@@ -39,8 +44,13 @@ async def polling_matches():
     print("Start Polling 30 secs...")
     polling_info = await handle_polling_matches()
     if polling_info:
-        channel = bot.get_channel(int(CHANNEL))
-        await channel.send(embed=polling_info)
+        for channel_id in CHANNEL_IDS:
+            try:
+                channel = bot.get_channel(int(channel_id))
+                if channel:
+                    await channel.send(embed=polling_info)
+            except ValueError:
+                print(f"Invalid channel ID: {channel_id}")
 
 
 @bot.event
