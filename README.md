@@ -38,7 +38,6 @@ To use the bot, simply type the following commands in your Discord server where 
 [INFO](https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/designs/info.md)
 ```
 /info Valorant-User-Name#User-Tag
-
 ```
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
@@ -50,6 +49,7 @@ To use the bot, simply type the following commands in your Discord server where 
 <p>
     <img src="https://github.com/Ian-I-Chien/Valorant-Discord-Bot/blob/main/pic/lm_output_example.png" alt="Output Example" width="300"/>
 </p>
+
 ```
 /reg_val Valorant-User-Name#User-Tag
 ```
