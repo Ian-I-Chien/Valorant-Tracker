@@ -275,7 +275,8 @@ class Match:
             f"{self.last_match_data['data']['metadata']['map']['name']}\n"
             f"{self.last_match_data['data']['metadata']['queue']['name']}\t"
             f"{winning_team_text}\t"
-            f"[{ratio}]"
+            f"[{ratio}]\n"
+            f"Match ID: {self.last_match_id}"
         )
 
         map_id = self.last_match_data["data"]["metadata"]["map"]["id"]
