@@ -225,13 +225,23 @@ class Match:
                 else:
                     formatted_info += "`{}`\n".format(f"[{player_name}]")
 
-            formatted_info += "`{}`\n".format(
-                f"{agent_name} "
-                f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
-                f"[{headshot_percentage:.2f}%] "
-                f"[{score}] "
-                f"[KAST: {players_kast[player['puuid']]:.2f}%]"
-            )
+            if (
+                self.last_match_data["data"]["metadata"]["queue"]["name"]
+                != "Team Deathmatch"
+            ):
+                formatted_info += "`{}`\n".format(
+                    f"{agent_name} "
+                    f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
+                    f"[{headshot_percentage:.2f}%] "
+                    f"[{score}] "
+                    f"[KAST: {players_kast[player['puuid']]:.2f}%]"
+                )
+            else:
+                formatted_info += "`{}`\n".format(
+                    f"{agent_name} "
+                    f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
+                    f"[{headshot_percentage:.2f}%]"
+                )
 
             if (
                 rank_in_tier is not None
