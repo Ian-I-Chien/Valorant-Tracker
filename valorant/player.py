@@ -91,8 +91,6 @@ class ValorantPlayer:
             return {"error": "Unable to fetch account data."}
 
         rank_data = await self.get_rank_by_api()
-        if not rank_data:
-            return {"error": "Unable to fetch rank data."}
 
         stats = await self.get_match_stats()
 
@@ -112,24 +110,31 @@ class ValorantPlayer:
             win_rate,
         ) = stats
 
-        tier_image_url = rank_data.get("images", {}).get("large", None)
+        if rank_data:
+            tier_image_url = rank_data.get("images", {}).get("large", None)
         player_card = account_data["card"]["small"]
 
         formatted_info = (
             f"Account Level: {account_data['account_level']}\n"
             f"### Info in 10 Games\n"
             f"WIN Rate: {win_rate}%\n\n"
-            f"H Kills: {highest_kills}\n"
-            f"Avg. KDA: {average_kda}\n\n"
-            f"H HS: {highest_ratio}%\n"
-            f"L HS: {lowest_ratio}%\n"
-            f"Avg. HS: {average_headshot_ratio}%\n\n"
-            f"Knifed: {melee_killers_count} Times\n"
-            f"Got knifed: {melee_victims_count} Times\n"
-            f"### Rank Info:\n"
-            f"Ranking in Tier: {rank_data['ranking_in_tier']}\n"
-            f"Last Game: {rank_data['mmr_change_to_last_game']}\n"
+            f"Highest Kills: {highest_kills}\n"
+            f"Avg.    KDA: {average_kda}\n\n"
+            f"Highest HS:  {highest_ratio}%\n"
+            f"Lowest  HS:  {lowest_ratio}%\n"
+            f"Avg.    HS:  {average_headshot_ratio}%\n\n"
+            f"Knifed:      {melee_killers_count} Times\n"
+            f"Got knifed:  {melee_victims_count} Times\n"
         )
+
+        if rank_data:
+            formatted_info += (
+                f"### Rank Info:\n"
+                f"Ranking in Tier: {rank_data['ranking_in_tier']}\n"
+                f"Last Game: {rank_data['mmr_change_to_last_game']}\n"
+            )
+        else:
+            formatted_info += f"### No Rank Info\n"
 
         embed = discord.Embed(
             title=f"{account_data['name']}#{account_data['tag']}",
@@ -137,6 +142,9 @@ class ValorantPlayer:
         )
         embed.description = formatted_info
         embed.set_thumbnail(url=player_card)
-        embed.set_footer(text=rank_data["currenttierpatched"], icon_url=tier_image_url)
+        if rank_data:
+            embed.set_footer(
+                text=rank_data["currenttierpatched"], icon_url=tier_image_url
+            )
 
         return embed
