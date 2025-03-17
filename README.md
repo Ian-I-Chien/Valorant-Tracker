@@ -1,24 +1,34 @@
 # NoMoreBully
 
 ## Description
-NoBully is a [Discord bot](https://discord.com/developers/docs/intro) designed to prevent bullying and toxic behavior during gaming sessions, particularly in games like Valorant.
-It aims to foster a healthier and more respectful gaming environment by tracking player interactions and providing useful features to manage mentions and interactions.
-Currently, it can only track mentions of specific users, but in the future, we hope to allow each user to have their own individual mention count.
-We calculate both daily and historical counts, and use the historical counts for rankings. The daily count is reset at the start of each day.
+NoBully [Discord Bot](https://discord.com/developers/docs/intro) - Preventing Bullying and Toxic Behavior in Gaming
 
-This bot can also automatically track match records for Valorant players who are registered (/reg_val) in the database.
+NoBully is a Discord bot designed to reduce bullying and toxic behavior during gaming sessions, especially in competitive games like Valorant. Its goal is to create a healthier and more respectful gaming environment by tracking player interactions and providing tools to manage mentions and interactions.
+
+Currently, NoBully tracks mentions of specific users and calculates both daily and historical mention counts. The daily count resets at the beginning of each day, while the historical count is used for player rankings.
+
+### Key Features:
+- Tracks mentions between players to help identify potential bullying behavior.
+Daily Counts & Historical Rankings (In Progress):
+- Provides daily mention statistics and uses historical data for player rankings.
+Valorant Match Records (Functional):
+- By integrating with the Valorant API, NoBully can automatically track the match records of players registered in the database. Players can register by using the /reg_val command.
 
 We have integrated the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
 
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
-The Token should be set in .env file.
+**The Token should be set in .env file.**
+**The Token should be set in .env file.**
+**The Token should be set in .env file.**
 
 [Discord Token](https://discord.com/developers/docs/quick-start/getting-started)
 ```
 BOT_TOKEN= "TOKEN"
 ```
+If you have multiple **BOT_TOKENS**, you should separate them using a comma.
+
 
 [API_Token](https://github.com/Henrik-3/unofficial-valorant-api)
 ```
@@ -132,3 +142,10 @@ Bully/
 ├── .env
 ├── requirements.txt
 ```
+
+## Contact
+
+If you have any questions or feedback, feel free to reach out!
+
+- **Email:** err@csie.io
+
