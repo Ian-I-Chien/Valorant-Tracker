@@ -14,6 +14,8 @@ CREATE TABLE discord_users (
     DiscordCacheID VARCHAR(255) PRIMARY KEY,
     DiscordAccount VARCHAR(255),
     DiscordDisplayName VARCHAR(255)
+    DiscordServerID    VARCHAR(255)
+    DiscordChannelID   VARCHAR(255)
 );
 ```
 #### Account
@@ -27,15 +29,21 @@ Discord Account
 Discord Display Name
 - Discord Display Name which can be read by Discord packet.
 
+Discord Server ID
+– The Discord server where a user is registered.
+
+Discord Channel ID
+– The Discord channel where the bot responded.
+
 #### Valorant Table
 ```
-CREATE TABLE valorant_accounts {
+CREATE TABLE valorant_accounts (
     DiscordCacheID VARCHAR(255),
     ValorantAccount VARCHAR(255),
-    ValorantPUUID VARCHAR(255) UNIQUE,
+    ValorantPUUID VARCHAR(255),
     PRIMARY KEY (DiscordCacheID, ValorantAccount),
     FOREIGN KEY (DiscordCacheID) REFERENCES discord_users(DiscordCacheID)
-}
+)
 ```
 Valorant Account
 - User's Valorant account, this account should be registered by Discord user.
