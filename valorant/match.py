@@ -5,6 +5,7 @@ import time
 import asyncio
 import discord
 from typing import Optional
+from datetime import datetime
 from .api import fetch_json, url_json
 from database.model_orm import ValorantAccountOrm
 
@@ -280,12 +281,18 @@ class Match:
             f"{winning_team} WIN!" if winning_team != "TIED" else winning_team
         )
 
+        iso_time = self.last_match_data["data"]["metadata"]["started_at"]
+        readable_time = datetime.fromisoformat(iso_time.rstrip("Z")).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
         title_info = "{}".format(
             f"Last Match\t"
             f"{self.last_match_data['data']['metadata']['map']['name']}\n"
             f"{self.last_match_data['data']['metadata']['queue']['name']}\t"
             f"{winning_team_text}\t"
             f"[{ratio}]\n"
+            f"Time: {readable_time}\n"
             f"Match ID: {self.last_match_id}"
         )
 
