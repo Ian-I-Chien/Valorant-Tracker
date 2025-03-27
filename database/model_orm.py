@@ -107,6 +107,14 @@ class ValorantAccountOrm(BaseOrm):
         existing_entry = await self._model.filter(valorant_puuid=valorant_puuid).first()
         return existing_entry is not None
 
+    @atomic()
+    async def remove_valorant_account(self, valorant_account: str):
+        account = await self._model.filter(valorant_account=valorant_account).first()
+        if not account:
+            raise DoesNotExist(f"Valorant account {valorant_account} does not exist.")
+        await account.delete()
+        print(f"Valorant account {valorant_account} removed successfully.")
+
 
 class MatchOrm(BaseOrm):
     def __init__(self):
@@ -150,7 +158,7 @@ class MatchOrm(BaseOrm):
             )
             return created_match.match_data
 
-        except ValorantAccount.DoesNotExist:
+        except DoesNotExist:
             print(f"Valorant account with puuid {valorant_puuid} does not exist.")
             return None
 

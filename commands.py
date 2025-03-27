@@ -1,6 +1,6 @@
 import discord
-from tortoise.exceptions import IntegrityError
-from database.model_orm import UserOrm, MatchOrm
+from tortoise.exceptions import IntegrityError, DoesNotExist
+from database.model_orm import UserOrm, MatchOrm, ValorantAccountOrm
 from file_manager import load_json, save_json
 from datetime import datetime
 from model.toxic_detector import ToxicMessageProcessor, ToxicDetectorResult
@@ -290,6 +290,26 @@ async def auto_nlp_process(
         embed.set_author(name="NoMoreBully")
         return None
         # await message.channel.send(embed=embed)
+
+
+async def delete_valorant_account(interaction: discord.Interaction, valorant_account):
+    player_name, player_tag = await parse_player_name(interaction, valorant_account)
+    if not player_name or not player_tag:
+        await interaction.edit_original_response(
+            content="Failed to parse Valorant account. Please ensure the account format is correct."
+        )
+        return
+
+    valorant_account_orm = ValorantAccountOrm()
+    try:
+        await valorant_account_orm.remove_valorant_account(valorant_account)
+        await interaction.edit_original_response(
+            content=f"Valorant account {valorant_account} has been successfully removed."
+        )
+    except DoesNotExist:
+        await interaction.edit_original_response(
+            content=f"Valorant account {valorant_account} does not exist."
+        )
 
 
 async def registered_with_valorant_account(

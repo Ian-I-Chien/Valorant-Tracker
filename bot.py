@@ -15,6 +15,7 @@ from commands import (
     auto_nlp_process,
     registered_with_valorant_account,
     handle_polling_matches,
+    delete_valorant_account,
 )
 from model.toxic_detector import ToxicMessageProcessor
 
@@ -125,6 +126,11 @@ async def lastmatch(interaction: discord.Interaction, player_full_name: str):
 @app_commands.describe(valorant_account="valorant account with hashtag. ex:user#1234")
 async def reg_val(interaction: discord.Interaction, valorant_account: str):
     await registered_with_valorant_account(interaction, valorant_account)
+
+
+@bot.tree.command(name="del_val", description="Delete Valorant User")
+async def del_val(interaction: discord.Interaction, valorant_account: str):
+    await delete_valorant_account(interaction, valorant_account)
 
 
 @bot.event
