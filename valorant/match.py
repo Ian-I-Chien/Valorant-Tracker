@@ -320,20 +320,6 @@ class Match:
             return None
         return self.last_match_data
 
-    async def get_complete_last_match(self):
-        await self.get_last_match_id()
-        await self.get_stored_match_by_id_by_api()
-        if not self.last_match_data:
-            return None
-        return self.last_match_data
-
-    async def get_last_match(self):
-        await self.get_last_match_id()
-        await self.get_stored_match_by_id_by_api()
-        if not self.last_match_data:
-            return None
-        return await self.sorted_formatted_player()
-
     async def get_matches_v3_by_api(self):
         url = url_json["matches_v3"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
@@ -350,26 +336,3 @@ class Match:
         last_match = matches_data["data"][0]
         self.last_match_id = last_match["metadata"]["matchid"]
         return self.last_match_id
-
-    async def get_five_match_id(self):
-        match_ids = []
-        matches_data = await self.get_matches_v3_by_api()
-        if not matches_data:
-            return None
-
-        for i in range(len(matches_data["data"])):
-            last_match = matches_data["data"][i]
-            match_id = last_match["metadata"]["matchid"]
-            match_ids.append(match_id)
-
-        return "\n".join([f"\t{match_id}" for match_id in match_ids])
-
-    async def get_match_by_id(self, matchid):
-        url = url_json["get_match_by_id"].format(region=self.region, matchid=matchid)
-        self.last_match_data = await fetch_json(url)
-        return self.last_match_data
-
-    def save_matches_to_file(self, data, file_path="./testcase/match_info.json"):
-        with open(file_path, "w", encoding="utf-8") as file:
-            json.dump(data, file, ensure_ascii=False, indent=4)
-        print(f"Matches data saved to {file_path}")
