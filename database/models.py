@@ -16,6 +16,8 @@ class UserInfo(BaseModel):
     dc_id = fields.CharField(max_length=255)
     dc_global_name = fields.CharField(max_length=255, null=True)
     dc_display_name = fields.CharField(max_length=255, null=True)
+    dc_server_id = fields.CharField(max_length=255, null=True)
+    dc_channel_id = fields.CharField(max_length=255, null=True)
 
 
 class ValorantAccount(BaseModel):
