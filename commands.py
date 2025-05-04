@@ -3,7 +3,7 @@ from tortoise.exceptions import IntegrityError, DoesNotExist
 from database.model_orm import UserOrm, MatchOrm, ValorantAccountOrm
 from valorant.match import Match
 from valorant.player import ValorantPlayer
-from utils import parse_player_name
+from utils import parse_player_name, get_env_or_interaction_channel
 import traceback
 
 
@@ -19,6 +19,7 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             "valorant_account"
                         ].split("#")
                         valorant_puuid = account_data["valorant_puuid"]
+                        dc_channel_id = account_data.get("dc_channel_id")
 
                         match = Match(player_name, player_tag)
                         last_match_id = await match.get_last_match_id()
@@ -49,7 +50,10 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                                     print(
                                         f"Saved new match {last_match_id} for {account_data['valorant_account']}"
                                     )
-                                    return await match.sorted_formatted_player()
+                                    return (
+                                        await match.sorted_formatted_player(),
+                                        dc_channel_id,
+                                    )
 
                     except Exception as e:
                         print(
@@ -60,6 +64,8 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
     except Exception as e:
         print(f"Critical error in handle_polling_matches: {e}")
         traceback.print_exc()
+
+    return None, None
 
 
 async def delete_valorant_account(interaction: discord.Interaction, valorant_account):
@@ -95,6 +101,12 @@ async def registered_with_valorant_account(
     dc_id = interaction.user.id
     dc_global_name = interaction.user.global_name
     dc_display_name = interaction.user.display_name
+    dc_server_id = interaction.guild
+    dc_channel_id = get_env_or_interaction_channel(interaction)
+
+    print(
+        f"[DEBUG] user_id={interaction.user.id}, global_name={interaction.user.global_name}, display_name={interaction.user.display_name}, server_id={interaction.guild.id if interaction.guild else 'DM'}, channel_id={interaction.channel.id}"
+    )
 
     try:
         player = ValorantPlayer(player_name, player_tag)
@@ -116,6 +128,8 @@ async def registered_with_valorant_account(
                 dc_id=dc_id,
                 dc_global_name=dc_global_name,
                 dc_display_name=dc_display_name,
+                dc_server_id=dc_server_id,
+                dc_channel_id=dc_channel_id,
                 val_account=valorant_account,
                 val_puuid=str(account_data["puuid"]),
             )

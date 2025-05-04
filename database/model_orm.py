@@ -19,6 +19,8 @@ class UserOrm(BaseOrm):
                 "dc_id": user.dc_id,
                 "dc_global_name": user.dc_global_name,
                 "dc_display_name": user.dc_display_name,
+                "dc_server_id": user.dc_server_id,
+                "dc_channel_id": user.dc_channel_id,
                 "valorant_accounts": [
                     {
                         "id": account.id,
@@ -37,6 +39,8 @@ class UserOrm(BaseOrm):
         dc_id: str,
         dc_global_name: str,
         dc_display_name: str,
+        dc_server_id: str,
+        dc_channel_id: str,
         val_account=None,
         val_puuid=None,
     ):
@@ -45,6 +49,8 @@ class UserOrm(BaseOrm):
                 dc_id=dc_id,
                 dc_global_name=dc_global_name,
                 dc_display_name=dc_display_name,
+                dc_server_id=dc_server_id,
+                dc_channel_id=dc_channel_id,
             )
             if val_account and val_puuid:
                 await self._val_account_orm.register_valorant_account(
@@ -62,6 +68,8 @@ class UserOrm(BaseOrm):
         dc_id: str,
         dc_global_name: str = None,
         dc_display_name: str = None,
+        dc_server_id: str = None,
+        dc_channel_id: str = None,
     ):
         original_data = await self._model.get(dc_id=dc_id)
         if not original_data:

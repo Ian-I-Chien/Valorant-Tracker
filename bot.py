@@ -33,15 +33,10 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 @tasks.loop(seconds=30)
 async def polling_matches():
     print("Start Polling 30 secs...")
-    polling_info = await handle_polling_matches()
-    if polling_info:
-        for channel_id in CHANNEL_IDS:
-            try:
-                channel = bot.get_channel(int(channel_id))
-                if channel:
-                    await channel.send(embed=polling_info)
-            except ValueError:
-                print(f"Invalid channel ID: {channel_id}")
+    polling_info, dc_channel_id = await handle_polling_matches()
+    if polling_info and dc_channel_id:
+        channel = bot.get_channel(dc_channel_id)
+        await channel.send(embed=polling_info)
 
 
 @bot.event
