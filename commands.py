@@ -11,6 +11,7 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
     try:
         async with UserOrm() as user_model:
             users_data = await user_model.get_all()
+            print(users_data)
 
             for user_data in users_data:
                 for account_data in user_data["valorant_accounts"]:
@@ -19,7 +20,7 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             "valorant_account"
                         ].split("#")
                         valorant_puuid = account_data["valorant_puuid"]
-                        dc_channel_id = account_data.get("dc_channel_id")
+                        dc_channel_id = user_data.get("dc_channel_id")
 
                         match = Match(player_name, player_tag)
                         last_match_id = await match.get_last_match_id()
@@ -105,7 +106,7 @@ async def registered_with_valorant_account(
     dc_channel_id = get_env_or_interaction_channel(interaction)
 
     print(
-        f"[DEBUG] user_id={interaction.user.id}, global_name={interaction.user.global_name}, display_name={interaction.user.display_name}, server_id={interaction.guild.id if interaction.guild else 'DM'}, channel_id={interaction.channel.id}"
+        f"[DEBUG] user_id={dc_id}, global_name={dc_global_name}, display_name={dc_display_name}, server_id={dc_server_id}, channel_id={dc_channel_id}"
     )
 
     try:

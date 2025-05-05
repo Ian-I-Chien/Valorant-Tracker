@@ -33,10 +33,20 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 @tasks.loop(seconds=30)
 async def polling_matches():
     print("Start Polling 30 secs...")
-    polling_info, dc_channel_id = await handle_polling_matches()
-    if polling_info and dc_channel_id:
-        channel = bot.get_channel(dc_channel_id)
-        await channel.send(embed=polling_info)
+
+    try:
+        polling_info, dc_channel_id = await handle_polling_matches()
+        if polling_info and dc_channel_id:
+            channel = bot.get_channel(int(dc_channel_id))
+            if channel:
+                await channel.send(embed=polling_info)
+            else:
+                print(f"[ERROR] Channel not found: {dc_channel_id}")
+        else:
+            print("[INFO] No polling_info or dc_channel_id returned.")
+
+    except Exception as e:
+        print(f"[EXCEPTION] polling_matches: {e}")
 
 
 @bot.event
