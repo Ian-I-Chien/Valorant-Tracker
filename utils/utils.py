@@ -23,12 +23,12 @@ def get_env_or_interaction_channel(
                 print(
                     f"[DEBUG] Found matching channel in env: {channel.name} ({channel.id})"
                 )
-                return channel
+                return channel.id
 
     print(
         f"[DEBUG] No matching env channel found, using interaction.channel: {interaction.channel.id}"
     )
-    return interaction.channel
+    return interaction.channel.id
 
 
 async def parse_player_name(interaction: discord.Interaction, player_full_name: str):
