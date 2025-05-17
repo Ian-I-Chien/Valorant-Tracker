@@ -8,31 +8,6 @@ By integrating with the Valorant API, Valorant-Tracker-Bot can automatically tra
 
 We have integrated the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
 
-OutPut Example:
-<p>
-    <img src="https://github.com/Ian-I-Chien/Valorant-Tracker/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
-</p>
-
-### OutPut Architecture:
-
-| Field         | Description                              |
-|---------------|------------------------------------------|
-| Match Date    | Date and time of the match               |
-| Map           | The map played (e.g. Pearl)              |
-| Match Type    | Type of match (Unrated, Ranked, etc.)    |
-| Result        | Win or Lose, with score if available     |
-| Player Name   | In-game name and tag                     |
-| Rank          | Player's rank at the time of the match   |
-| Agent         | The agent used in the match              |
-| K             | Kills                                    |
-| D             | Deaths                                   |
-| A             | Assists                                  |
-| K/D/A         | Combined stat format                     |
-| HS%           | Head shoot percentage                      |
-| ACS           | Average Combat Score                     |
-| KAST          | Percentage of rounds with kill, assist, survived, or traded |
-
-
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
@@ -66,22 +41,42 @@ To use the bot, simply type the following commands in your Discord server where 
 ```
 Register a Valorant account with your Discord account to automatically track matches.
 
+## Output
+
+### OutPut Architecture:
+
+| Field         | Description                              |
+|---------------|------------------------------------------|
+| Match Date    | Date and time of the match               |
+| Map           | The map played (e.g. Pearl)              |
+| Match Type    | Type of match (Unrated, Ranked, etc.)    |
+| Result        | Win or Lose, with score if available     |
+| Player Name   | In-game name and tag                     |
+| Rank          | Player's rank at the time of the match   |
+| Agent         | The agent used in the match              |
+| K             | Kills                                    |
+| D             | Deaths                                   |
+| A             | Assists                                  |
+| K/D/A         | Combined stat format                     |
+| HS%           | Head shoot percentage                      |
+| ACS           | Average Combat Score                     |
+| KAST          | Percentage of rounds with kill, assist, survived, or traded |
+
+### Output Example on Discord
+
+<p>
+    <img src="https://github.com/Ian-I-Chien/Valorant-Tracker/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
+</p>
 
 
 ## Tree:
 ```
-Bully/
-├── config/
-│   └── constants.json
-├── data/
-│   └── user_data.json
+Valorant-Tracker/
 ├── database/
 │   └── const.py
 │   └── database.py
 │   └── models.py
 │   └── model_orm.py
-├── model/
-│   └── toxic_detector.py
 ├── valorant/
 │   └── __init__.py
 │   └── api.py
@@ -94,7 +89,6 @@ Bully/
 ├── main.py
 ├── bot.py
 ├── commands.py
-├── file_manager.py
 ├── valorant.py
 ├── .env
 ├── requirements.txt
