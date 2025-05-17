@@ -1,18 +1,21 @@
 # Valorant-Tracker-Bot
 
 ## Description
-Valorant Tracker Bot [Discord Bot](https://discord.com/developers/docs/intro) - monitoring the matches info of Valoarnt
+Valorant Tracker Bot [Discord Bot](https://discord.com/developers/docs/intro) - monitoring the matches info of Valorant
 
 ### Key Features:
-- By integrating with the Valorant API, Valorant-Tracker-Bot can automatically track the match records of players registered in the database. Players can register by using the /reg_val command.
+By integrating with the Valorant API, Valorant-Tracker-Bot can automatically track the match records of players registered in the database. Players can register by using the /reg_val command.
 
 We have integrated the [Valorant API from Henrik-3](https://github.com/Henrik-3/unofficial-valorant-api) so that the bot can also check personal stats and other related information.
+
+OutPut Example:
+<p>
+    <img src="https://github.com/Ian-I-Chien/Valorant-Tracker-Bot/blob/main/pic/output_example.png" alt="Output Example" width="300"/>
+</p>
 
 ## Environment:
 This bot is running on R-PI3 with python version 3.11.2
 
-**The Token should be set in .env file.**
-**The Token should be set in .env file.**
 **The Token should be set in .env file.**
 
 [Discord Token](https://discord.com/developers/docs/quick-start/getting-started)
