@@ -90,20 +90,20 @@ async def delete_valorant_account(interaction: discord.Interaction, valorant_acc
 
 
 async def registered_with_valorant_account(
-    interaction: discord.Interaction, valorant_account
+    interaction: discord.Interaction, valorant_account: str
 ):
-
     player_name, player_tag = await parse_player_name(interaction, valorant_account)
     if not player_name or not player_tag:
         await interaction.edit_original_response(
-            content="Failed to parse Valorant account. Please ensure the account format is correct."
+            content="Failed to parse Valorant account. Format must be like `user#1234`."
         )
+        return
 
-    dc_id = interaction.user.id
+    dc_id = str(interaction.user.id)
     dc_global_name = interaction.user.global_name
     dc_display_name = interaction.user.display_name
-    dc_server_id = interaction.guild
-    dc_channel_id = get_env_or_interaction_channel(interaction)
+    dc_server_id = str(interaction.guild.id)
+    dc_channel_id = str(get_env_or_interaction_channel(interaction))
 
     print(
         f"[DEBUG] user_id={dc_id}, global_name={dc_global_name}, display_name={dc_display_name}, server_id={dc_server_id}, channel_id={dc_channel_id}"
@@ -114,12 +114,12 @@ async def registered_with_valorant_account(
         account_data = await player.get_account_by_api()
         if account_data is None:
             await interaction.edit_original_response(
-                content=f"Failed to fetch account: {valorant_account}"
+                content=f"Could not fetch account: {valorant_account}"
             )
             return
-    except IntegrityError as e:
+    except Exception as e:
         await interaction.edit_original_response(
-            content=f"Failed to fetch account: {str(e)}"
+            content=f"Error fetching account: {str(e)}"
         )
         return
 
@@ -135,9 +135,9 @@ async def registered_with_valorant_account(
                 val_puuid=str(account_data["puuid"]),
             )
             await interaction.edit_original_response(
-                content=f"{dc_display_name} Registered {valorant_account} successfully!"
+                content=f"{dc_display_name} registered `{valorant_account}` successfully!"
             )
         except IntegrityError as e:
             await interaction.edit_original_response(
-                content=f"Failed to register: {str(e)}"
+                content=f"Registration failed: {str(e)}"
             )

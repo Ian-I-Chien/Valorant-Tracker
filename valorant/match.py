@@ -8,6 +8,7 @@ from typing import Optional
 from datetime import datetime
 from .api import fetch_json, url_json
 from database.model_orm import ValorantAccountOrm
+from utils import fix_isoformat
 
 
 class Match:
@@ -282,8 +283,8 @@ class Match:
         )
 
         iso_time = self.last_match_data["data"]["metadata"]["started_at"]
-        readable_time = datetime.fromisoformat(iso_time.rstrip("Z")).strftime(
-            "%Y-%m-%d %H:%M:%S"
+        readable_time = datetime.fromisoformat(fix_isoformat(iso_time)).strftime(
+            "%Y/%m/%d %H:%M"
         )
 
         title_info = "{}".format(

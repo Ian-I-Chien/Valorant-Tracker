@@ -8,6 +8,17 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def fix_isoformat(iso_time: str):
+    if iso_time.endswith("Z"):
+        iso_time = iso_time[:-1]
+    if "." in iso_time:
+        date_part, frac = iso_time.split(".")
+        if len(frac) < 6:
+            frac = frac.ljust(6, "0")
+        iso_time = f"{date_part}.{frac}"
+    return iso_time
+
+
 def get_env_or_interaction_channel(
     interaction: discord.Interaction,
 ) -> Optional[discord.abc.Messageable]:
