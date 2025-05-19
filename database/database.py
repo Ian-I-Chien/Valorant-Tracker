@@ -5,11 +5,11 @@ from typing import Type
 from tortoise import Tortoise, Model
 
 
-def get_dp_path(server_name="default"):
-    return os.path.join(os.path.dirname(__file__), f"{server_name}_no_bully.db")
+def get_dp_path(server_name="valorant-discord"):
+    return os.path.join(os.path.dirname(__file__), f"{server_name}.db")
 
 
-async def db_init(server_name="default"):
+async def db_init(server_name="valorant-discord"):
     """
     init DB
     :param server_name: every server has its own DB

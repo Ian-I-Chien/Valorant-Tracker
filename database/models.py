@@ -10,14 +10,16 @@ class MentionTypeEnum(Enum):
 
 
 class UserInfo(BaseModel):
-    class Meta:
-        table = "user_info"
-
+    id = fields.IntField(pk=True)
     dc_id = fields.CharField(max_length=255)
     dc_global_name = fields.CharField(max_length=255, null=True)
     dc_display_name = fields.CharField(max_length=255, null=True)
     dc_server_id = fields.CharField(max_length=255, null=True)
     dc_channel_id = fields.CharField(max_length=255, null=True)
+
+    class Meta:
+        table = "user_info"
+        unique_together = ("dc_id", "dc_server_id", "dc_channel_id")
 
 
 class ValorantAccount(BaseModel):
