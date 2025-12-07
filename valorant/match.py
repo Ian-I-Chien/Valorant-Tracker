@@ -7,7 +7,7 @@ import discord
 from typing import Optional
 from datetime import datetime
 from .api import fetch_json, url_json
-from database.model_orm import ValorantAccountOrm
+from database.storage_json import UserJsonDB
 from utils import fix_isoformat
 
 
@@ -20,6 +20,9 @@ class Match:
         self.region = region
 
     async def get_rank_with_retries(self, player_instance, retries=5, delay=2):
+        """
+        Fetch rank data with retries to avoid transient API failures.
+        """
         attempt = 0
         while attempt < retries:
             try:
@@ -30,14 +33,22 @@ class Match:
                 print(f"Error fetching rank for {player_instance.player_name}: {e}")
             attempt += 1
             await asyncio.sleep(delay)
+
         print(
-            f"Failed to fetch rank for {player_instance.player_name} after {retries} attempts."
+            f"Failed to fetch rank for {player_instance.player_name} "
+            f"after {retries} attempts."
         )
         return None
 
     def check_melee_info(self):
+        """
+        Collect melee kills and melee deaths information from the match.
+        Returns:
+            tuple(list, list): (melee_killers, melee_victims)
+        """
         melee_killers = []
         melee_victims = []
+
         for kill in self.last_match_data["data"]["kills"]:
             weapon_type = kill["weapon"]["type"]
             if weapon_type == "Melee":
@@ -45,20 +56,22 @@ class Match:
                 victim_name = kill["victim"]["name"]
                 melee_killers.append(killer_name)
                 melee_victims.append(victim_name)
+
         return melee_killers, melee_victims
 
     def calculate_kast(self, match_data: dict = None) -> Optional[dict]:
-        """Calculate KAST from Henrikdev API v4_match
+        """
+        Calculate KAST from Henrikdev API v4_match.
 
         Args:
             match_data (dict): match data
 
         Returns:
-            dict: all players kast information
+            dict: {player_puuid: kast_percentage}
         """
         if match_data is None:
             if self.last_match_data is None:
-                raise ValueError(f"calculate_kast match_data is null.")
+                raise ValueError("calculate_kast match_data is null.")
             match_data = self.last_match_data
 
         data = match_data.get("data", None)
@@ -77,6 +90,7 @@ class Match:
         if kills is None:
             raise ValueError("calculate_kast kills is null.")
 
+        # Initialize per-player, per-round performance structure
         players_rounds_performance = {}
         for player in players:
             puuid: str = player["puuid"]
@@ -91,77 +105,102 @@ class Match:
                     }
                 )
 
+        # Sort kills by time in match to handle trades correctly
         kills = sorted(kills, key=lambda x: x["time_in_match_in_ms"])
-        killer_list = {}  # who kill victim, which round and when
+        killer_list = {}  # track who killed whom and when in the same round
         round_temp = -1
+
         for kill in kills:
-            round: int = kill["round"]
+            round_index: int = kill["round"]
             time_in_round_in_ms: int = int(kill["time_in_round_in_ms"])
             killer: str = kill["killer"]["puuid"]
             victim: str = kill["victim"]["puuid"]
             assistants: list = kill["assistants"]
 
-            # reset killer lists
-            if round_temp != round:
-                round_temp = round
+            # Reset killer list when round changes
+            if round_temp != round_index:
+                round_temp = round_index
                 killer_list.clear()
 
-            # got victim
-            players_rounds_performance[victim][round]["death"] += 1
+            # Record death
+            players_rounds_performance[victim][round_index]["death"] += 1
 
-            # got trade
+            # Check for trade kills within 3 seconds
             if victim in killer_list:
                 for victim_of_killer in killer_list[victim]:
                     if (time_in_round_in_ms - victim_of_killer["time"]) <= 3000:
-                        players_rounds_performance[victim_of_killer["victim"]][round][
-                            "trade"
-                        ] += 1
+                        players_rounds_performance[victim_of_killer["victim"]][
+                            round_index
+                        ]["trade"] += 1
 
-            # got kill
-            players_rounds_performance[killer][round]["kill"] += 1
-            if not killer in killer_list:
-                killer_list[killer] = list()
+            # Record kill
+            players_rounds_performance[killer][round_index]["kill"] += 1
+            if killer not in killer_list:
+                killer_list[killer] = []
             killer_list[killer].append({"victim": victim, "time": time_in_round_in_ms})
 
-            # got assistant
+            # Record assists
             for assistant in assistants:
                 assistanter: str = assistant["puuid"]
-                players_rounds_performance[assistanter][round]["assistant"] += 1
+                players_rounds_performance[assistanter][round_index]["assistant"] += 1
 
+        # Calculate KAST for each player
         result = {}
         for player_uuid, rounds_info in players_rounds_performance.items():
-            kast_with_round = 0
-            for round in range(len(rounds)):
-                one_round_data = rounds_info[round]
+            kast_rounds = 0
+            for round_index in range(len(rounds)):
+                one_round_data = rounds_info[round_index]
                 got_kill: int = one_round_data["kill"]
                 got_death: int = one_round_data["death"]
                 got_assistant: int = one_round_data["assistant"]
                 got_trade: int = one_round_data["trade"]
 
                 if got_kill > 0 or got_assistant > 0 or got_trade > 0 or got_death == 0:
-                    kast_with_round += 1
-            player_kast = (kast_with_round / len(rounds)) * 100
+                    kast_rounds += 1
+
+            player_kast = (kast_rounds / len(rounds)) * 100
             result[player_uuid] = player_kast
+
         return result
 
     async def sorted_formatted_player(self):
+        """
+        Build a Discord embed showing the last match summary and
+        sorted player stats with rank, HS, KAST, etc.
+        """
+        from valorant.player import ValorantPlayer
+
+        if self.last_match_data is None:
+            raise ValueError("sorted_formatted_player called with no match data.")
+
+        # Build a set of all registered Valorant accounts from JSON storage
+        async with UserJsonDB() as user_model:
+            users_data = await user_model.get_all()
+
+        registered_accounts = set()
+        for user in users_data:
+            for acc in user.get("valorant_accounts", []):
+                valorant_account = acc.get("valorant_account")
+                if valorant_account:
+                    registered_accounts.add(valorant_account)
 
         melee_killers, melee_victims = self.check_melee_info()
         players_kast = self.calculate_kast()
 
+        # Sort players by score (descending)
         sorted_players = sorted(
             self.last_match_data["data"]["players"],
             key=lambda x: x["stats"]["score"],
             reverse=True,
         )
 
-        from .player import ValorantPlayer
-
+        # Create ValorantPlayer instances for rank fetching
         player_instances = [
             ValorantPlayer(player_name=p["name"], player_tag=p["tag"])
             for p in sorted_players
         ]
 
+        # Fetch rank information in parallel
         rank_data_dicts = await asyncio.gather(
             *[self.get_rank_with_retries(player) for player in player_instances]
         )
@@ -170,9 +209,8 @@ class Match:
         for index, (player, rank_data_dict) in enumerate(
             zip(sorted_players, rank_data_dicts)
         ):
-
             player_name = f"{player['name']}#{player['tag']}"
-            accounts = None
+
             current_tier = (
                 rank_data_dict.get("currenttierpatched", "Unrated")
                 if rank_data_dict
@@ -188,13 +226,13 @@ class Match:
             )
 
             stats = player.get("stats", {})
-            score = math.floor(
-                stats.get("score", 0)
-                / (
-                    self.last_match_data["data"]["teams"][0]["rounds"]["won"]
-                    + self.last_match_data["data"]["teams"][0]["rounds"]["lost"]
-                )
+            total_rounds = (
+                self.last_match_data["data"]["teams"][0]["rounds"]["won"]
+                + self.last_match_data["data"]["teams"][0]["rounds"]["lost"]
             )
+
+            score = math.floor(stats.get("score", 0) / total_rounds)
+
             total_shots = sum(
                 stats.get(k, 0) for k in ["bodyshots", "headshots", "legshots"]
             )
@@ -205,6 +243,8 @@ class Match:
             )
 
             agent_name = player["agent"].get("name", "Unknown Agent")
+
+            # Melee info (knife kills / deaths)
             melee_info = ""
             melee_kill_count = melee_killers.count(player["name"])
             melee_victim_count = melee_victims.count(player["name"])
@@ -214,23 +254,21 @@ class Match:
             if melee_victim_count > 0:
                 melee_info += f"[Get Knifed x{melee_victim_count}] :<"
 
+            # Team + rank header
             formatted_info += "`{}` ".format(
                 f"[{'🔵' if player['team_id'] == 'Blue' else '🔴'}] "
                 f"[{current_tier}]"
             )
 
-            async with ValorantAccountOrm() as account_model:
-                accounts = await account_model.get_valorant_accounts(player_name)
+            # Highlight players that are registered in our JSON DB
+            if player_name in registered_accounts:
+                formatted_info += "**`{}`**\n".format(f"[{player_name}]")
+            else:
+                formatted_info += "`{}`\n".format(f"[{player_name}]")
 
-                if accounts:
-                    formatted_info += "**`{}`**\n".format(f"[{player_name}]")
-                else:
-                    formatted_info += "`{}`\n".format(f"[{player_name}]")
-
-            if (
-                self.last_match_data["data"]["metadata"]["queue"]["name"]
-                != "Team Deathmatch"
-            ):
+            # Detailed stats (except for Team Deathmatch)
+            queue_name = self.last_match_data["data"]["metadata"]["queue"]["name"]
+            if queue_name != "Team Deathmatch":
                 formatted_info += "`{}`\n".format(
                     f"{agent_name} "
                     f"{stats.get('kills', 0)}/{stats.get('deaths', 0)}/{stats.get('assists', 0)} "
@@ -245,20 +283,23 @@ class Match:
                     f"[{headshot_percentage:.2f}%]"
                 )
 
+            # Rank progress (only for Competitive queue)
             if (
                 rank_in_tier is not None
                 and mmr_change is not None
-                and self.last_match_data["data"]["metadata"]["queue"]["name"]
-                == "Competitive"
+                and queue_name == "Competitive"
             ):
                 formatted_info += "`{}`\n".format(
-                    f"[{rank_in_tier}/99] " f"[{mmr_change:+d}]"
+                    f"[{rank_in_tier}/99] [{mmr_change:+d}]"
                 )
 
+            # Melee info line, if any
             if melee_info:
-                formatted_info += "`{}`\n".format(f"{melee_info}")
+                formatted_info += "`{}`\n".format(melee_info)
+
             formatted_info += "\n"
 
+        # Compute team scores and winning side
         blue_wins = next(
             team["rounds"]["won"]
             for team in self.last_match_data["data"]["teams"]
@@ -277,11 +318,11 @@ class Match:
         )
 
         ratio = f"{blue_wins}:{red_wins}"
-
         winning_team_text = (
             f"{winning_team} WIN!" if winning_team != "TIED" else winning_team
         )
 
+        # Match time
         iso_time = self.last_match_data["data"]["metadata"]["started_at"]
         readable_time = datetime.fromisoformat(fix_isoformat(iso_time)).strftime(
             "%Y/%m/%d %H:%M"
@@ -290,16 +331,18 @@ class Match:
         title_info = "{}".format(
             f"Last Match\t"
             f"{self.last_match_data['data']['metadata']['map']['name']}\n"
-            f"{self.last_match_data['data']['metadata']['queue']['name']}\t"
+            f"{queue_name}\t"
             f"{winning_team_text}\t"
             f"[{ratio}]\n"
             f"Time: {readable_time}\n"
             f"Match ID: {self.last_match_id}"
         )
 
+        # Map image
         map_id = self.last_match_data["data"]["metadata"]["map"]["id"]
         image_url = f"https://media.valorant-api.com/maps/{map_id}/listviewicon.png"
 
+        # Embed color by winning team
         color = (
             discord.Color.blue()
             if winning_team == "BLUE"
@@ -309,12 +352,17 @@ class Match:
                 else discord.Color.greyple()
             )
         )
+
         embed = discord.Embed(title=title_info, color=color)
         embed.set_image(url=image_url)
         embed.description = formatted_info
+
         return embed
 
     async def get_stored_match_by_id_by_api(self):
+        """
+        Fetch full match data using the stored last_match_id.
+        """
         url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
         self.last_match_data = await fetch_json(url)
         if not self.last_match_data:
@@ -322,8 +370,13 @@ class Match:
         return self.last_match_data
 
     async def get_matches_v3_by_api(self):
+        """
+        Fetch recent matches for the player from Henrikdev API (v3).
+        """
         url = url_json["matches_v3"].format(
-            region=self.region, player_name=self.player_name, player_tag=self.player_tag
+            region=self.region,
+            player_name=self.player_name,
+            player_tag=self.player_tag,
         )
         matches_data = await fetch_json(url)
         if not matches_data:
@@ -331,9 +384,13 @@ class Match:
         return matches_data
 
     async def get_last_match_id(self):
+        """
+        Fetch and store the latest match ID for this player.
+        """
         matches_data = await self.get_matches_v3_by_api()
         if not matches_data:
             return None
+
         last_match = matches_data["data"][0]
         self.last_match_id = last_match["metadata"]["matchid"]
         return self.last_match_id
