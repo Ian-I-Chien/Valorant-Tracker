@@ -73,10 +73,7 @@ Register a Valorant account with your Discord account to automatically track mat
 ```
 Valorant-Tracker/
 ├── database/
-│   └── const.py
-│   └── database.py
-│   └── models.py
-│   └── model_orm.py
+│   └── storage_json.py
 ├── valorant/
 │   └── __init__.py
 │   └── api.py
