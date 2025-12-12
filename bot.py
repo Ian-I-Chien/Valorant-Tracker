@@ -21,7 +21,8 @@ CHANNEL_IDS = [
 ]
 
 
-if not TOKEN or not CHANNEL_IDS:
+if not TOKEN:
+    print("[ERROR] Need to set TOKEN in env.")
     sys.exit(1)
 
 intents = discord.Intents.default()
@@ -36,17 +37,32 @@ async def polling_matches():
 
     try:
         polling_info, dc_channel_id = await handle_polling_matches()
-        if polling_info and dc_channel_id:
-            channel = bot.get_channel(int(dc_channel_id))
-            if channel:
-                await channel.send(embed=polling_info)
-            else:
-                print(f"[ERROR] Channel not found: {dc_channel_id}")
-        else:
-            print("[INFO] No polling_info or dc_channel_id returned.")
+
+        if not polling_info:
+            print("[INFO] No polling_info returned.")
+            return
+
+        target_channels = []
+
+        if CHANNEL_IDS:
+            for cid in CHANNEL_IDS:
+                ch = bot.get_channel(int(cid))
+                if ch:
+                    target_channels.append(ch)
+        elif dc_channel_id:
+            ch = bot.get_channel(int(dc_channel_id))
+            if ch:
+                target_channels.append(ch)
+
+        if not target_channels:
+            print("[WARN] No valid channels found to send message.")
+            return
+
+        for ch in target_channels:
+            await ch.send(embed=polling_info)
 
     except Exception as e:
-        print(f"[EXCEPTION] polling_matches: {e}")
+        print(f"[ERROR] polling_matches: {e}")
 
 
 @bot.event
