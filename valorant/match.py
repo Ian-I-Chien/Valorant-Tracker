@@ -334,8 +334,8 @@ class Match:
             f"{queue_name}\t"
             f"{winning_team_text}\t"
             f"[{ratio}]\n"
-            f"Time: {readable_time}\n"
-            f"Match ID: {self.last_match_id}"
+            f"Time: {readable_time}"
+            # f"Match ID: {self.last_match_id}"
         )
 
         # Map image
