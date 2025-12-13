@@ -1,0 +1,10 @@
+database/**.json**
+path/
+/myenv/*
+__pycache__/
+.vscode/
+.env
+/testcase/*.json
+/config/constants.json
+/data/user_data.json
+/url/
