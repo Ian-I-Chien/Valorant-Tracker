@@ -5,7 +5,7 @@ import time
 import asyncio
 import discord
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from .api import fetch_json, url_json
 from database.storage_json import UserJsonDB
 from utils import fix_isoformat
@@ -324,9 +324,11 @@ class Match:
 
         # Match time
         iso_time = self.last_match_data["data"]["metadata"]["started_at"]
-        readable_time = datetime.fromisoformat(fix_isoformat(iso_time)).strftime(
-            "%Y/%m/%d %H:%M"
-        )
+        dt = datetime.fromisoformat(fix_isoformat(iso_time))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        readable_time = dt.astimezone().strftime("%Y/%m/%d %H:%M")
 
         title_info = "{}".format(
             f"Last Match\t"
