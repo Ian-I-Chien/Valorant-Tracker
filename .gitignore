@@ -1,6 +1,6 @@
 database/**.json**
 path/
-/myenv/*
+/*env/*
 __pycache__/
 .vscode/
 .env
