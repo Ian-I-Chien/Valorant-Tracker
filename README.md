@@ -91,6 +91,10 @@ Valorant-Tracker/
 ├── requirements.txt
 ```
 
+Future Plans
+- Add SQLite support for persistent data storage
+- Provide visualized match statistics for a better overview of match
+
 ## Contact
 
 If you have any questions or feedback, feel free to reach out!
