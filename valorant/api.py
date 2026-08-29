@@ -1,50 +1,77 @@
+import asyncio
+import logging
 import os
 import time
-import asyncio
+from collections import deque
+from typing import Any, Optional
+
 import aiohttp
 from dotenv import load_dotenv
 
-MAX_REQUESTS_PER_MINUTE = 90
-TIME_WINDOW = 60
-
-request_times = []
-
 load_dotenv()
-API_KEY = os.getenv("API_KEY")
-API_SUCCESS = 200
 
-headers = {"Authorization": f"{API_KEY}", "accept": "application/json"}
+LOGGER = logging.getLogger(__name__)
+MAX_REQUESTS_PER_MINUTE = 90
+RATE_LIMIT_WINDOW_SECONDS = 60
+HTTP_OK = 200
 
-url_json = {
+API_URLS = {
     "rank": "https://api.henrikdev.xyz/valorant/v1/mmr/{region}/{player_name}/{player_tag}",
     "account": "https://api.henrikdev.xyz/valorant/v1/account/{player_name}/{player_tag}",
     "match": "https://api.henrikdev.xyz/valorant/v4/match/{region}/{matchid}",
-    "matches_v1": "https://api.henrikdev.xyz/valorant/v1/stored-matches/{region}/{player_name}/{player_tag}",
     "matches_v3": "https://api.henrikdev.xyz/valorant/v3/matches/{region}/{player_name}/{player_tag}",
-    "get_match_by_id": "https://api.henrikdev.xyz/valorant/v4/match/{region}/{matchid}",
 }
 
 
-async def check_rate_limit():
+class SlidingWindowRateLimiter:
+    """Process-local sliding-window limiter for Henrik API requests."""
 
-    global request_times
-    current_time = time.time()
+    def __init__(self, limit: int, window_seconds: float):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self._request_times: deque[float] = deque()
+        self._lock: Optional[asyncio.Lock] = None
 
-    request_times = [t for t in request_times if current_time - t < TIME_WINDOW]
-    print("Request Times Length:", len(request_times))
-    if len(request_times) >= MAX_REQUESTS_PER_MINUTE:
-        wait_time = TIME_WINDOW - (current_time - request_times[0])
-        print(f"Rate limit reached. Waiting for {wait_time:.2f} seconds.")
-        await asyncio.sleep(wait_time)
-        current_time = time.time()
-        request_times = [t for t in request_times if current_time - t < TIME_WINDOW]
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    async def acquire(self) -> None:
+        async with self._get_lock():
+            now = time.monotonic()
+            self._discard_expired(now)
+            if len(self._request_times) >= self.limit:
+                delay = self.window_seconds - (now - self._request_times[0])
+                LOGGER.info("API rate limit reached; waiting %.2f seconds", delay)
+                await asyncio.sleep(max(delay, 0))
+                now = time.monotonic()
+                self._discard_expired(now)
+            self._request_times.append(now)
+
+    def _discard_expired(self, now: float) -> None:
+        while (
+            self._request_times and now - self._request_times[0] >= self.window_seconds
+        ):
+            self._request_times.popleft()
 
 
-async def fetch_json(url, params=None):
-    await check_rate_limit()
+RATE_LIMITER = SlidingWindowRateLimiter(
+    MAX_REQUESTS_PER_MINUTE, RATE_LIMIT_WINDOW_SECONDS
+)
+
+
+async def fetch_json(
+    url: str, params: Optional[dict[str, Any]] = None
+) -> Optional[dict[str, Any]]:
+    await RATE_LIMITER.acquire()
+    headers = {
+        "Authorization": os.getenv("API_KEY", ""),
+        "accept": "application/json",
+    }
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params) as response:
-            request_times.append(time.time())
-            if response.status == API_SUCCESS:
+            if response.status == HTTP_OK:
                 return await response.json()
+            LOGGER.warning("Henrik API returned HTTP %s for %s", response.status, url)
             return None

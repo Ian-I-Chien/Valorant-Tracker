@@ -1,54 +1,37 @@
-import discord
-
-import os
 from typing import Optional
+
 import discord
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
-def fix_isoformat(iso_time: str):
+def fix_isoformat(iso_time: str) -> str:
+    """Normalize Henrik timestamps for Python's ISO parser."""
     if iso_time.endswith("Z"):
         iso_time = iso_time[:-1]
     if "." in iso_time:
-        date_part, frac = iso_time.split(".")
-        if len(frac) < 6:
-            frac = frac.ljust(6, "0")
-        iso_time = f"{date_part}.{frac}"
+        date_part, fraction = iso_time.split(".", 1)
+        iso_time = f"{date_part}.{fraction.ljust(6, '0')}"
     return iso_time
 
 
-def get_env_or_interaction_channel(
-    interaction: discord.Interaction,
-) -> Optional[discord.abc.Messageable]:
-    channel_ids_str = os.getenv("CHANNEL_ID", "")
-    env_channel_ids = [
-        int(cid.strip()) for cid in channel_ids_str.split(",") if cid.strip().isdigit()
-    ]
-
-    if interaction.guild:
-        for cid in env_channel_ids:
-            channel = interaction.guild.get_channel(cid)
-            if channel:
-                print(
-                    f"[DEBUG] Found matching channel in env: {channel.name} ({channel.id})"
-                )
-                return channel.id
-
-    print(
-        f"[DEBUG] No matching env channel found, using interaction.channel: {interaction.channel.id}"
-    )
-    return interaction.channel.id
-
-
-async def parse_player_name(interaction: discord.Interaction, player_full_name: str):
+async def parse_player_name(
+    interaction: discord.Interaction, player_full_name: str
+) -> tuple[Optional[str], Optional[str]]:
+    """Parse and acknowledge a Riot ID in the form game-name#tag."""
     try:
-        player_name, player_tag = player_full_name.split("#")
+        player_name, player_tag = player_full_name.rsplit("#", 1)
     except ValueError:
-        await interaction.response.send_message("Wrong Format 'player_name#tag'。")
+        await interaction.response.send_message(
+            "Wrong format. Expected `player_name#tag`."
+        )
+        return None, None
+
+    player_name = player_name.strip()
+    player_tag = player_tag.strip()
+    if not player_name or not player_tag:
+        await interaction.response.send_message(
+            "Wrong format. Expected `player_name#tag`."
+        )
         return None, None
 
     await interaction.response.send_message("Parsing data... Please wait.")
-
     return player_name, player_tag

@@ -4,6 +4,7 @@ import json
 from database.storage_sqlite import (
     DuplicateSubscriptionError,
     UserSQLiteDB,
+    initialize_database,
     migrate_legacy_json,
 )
 
@@ -24,21 +25,19 @@ def test_register_checkpoint_and_owner_scoped_delete(tmp_path):
                 "user-2", "two", "Two", "server-2", "channel-2", "Ace#AP", "p1"
             )
         async with UserSQLiteDB(database_file) as repository:
-            rows = await repository.get_all()
-            first = rows[0]["valorant_accounts"][0]
-            assert await repository.update_last_polled_match(
-                first["subscription_id"], None, "match-1"
-            )
+            subscriptions = await repository.list_subscriptions()
+            first = subscriptions[0]
+            assert await repository.update_last_polled_match(first.id, None, "match-1")
             assert not await repository.update_last_polled_match(
-                first["subscription_id"], None, "stale-match"
+                first.id, None, "stale-match"
             )
             assert await repository.remove_valorant_account(
                 "user-1", "server-1", "ace#ap"
             )
         async with UserSQLiteDB(database_file) as repository:
-            remaining = await repository.get_all()
+            remaining = await repository.list_subscriptions()
             assert len(remaining) == 1
-            assert remaining[0]["dc_id"] == "user-2"
+            assert remaining[0].discord_user_id == "user-2"
 
     run(scenario())
 
@@ -76,10 +75,10 @@ def test_legacy_migration_is_idempotent_and_keeps_source(tmp_path):
 
     async def read_rows():
         async with UserSQLiteDB(database_file) as repository:
-            return await repository.get_all()
+            return await repository.list_subscriptions()
 
-    rows = run(read_rows())
-    assert rows[0]["valorant_accounts"][0]["last_polled_match_id"] == "match-1"
+    subscriptions = run(read_rows())
+    assert subscriptions[0].last_polled_match_id == "match-1"
 
 
 def test_duplicate_subscription_rolls_back_entire_registration(tmp_path):
@@ -104,5 +103,58 @@ def test_duplicate_subscription_rolls_back_entire_registration(tmp_path):
                 "SELECT COUNT(*) FROM discord_users"
             )
             assert (await cursor.fetchone())[0] == 1
+
+    run(scenario())
+
+
+def test_guild_notification_channels_are_isolated_and_updateable(tmp_path):
+    database_file = tmp_path / "tracker.db"
+
+    async def scenario():
+        async with UserSQLiteDB(database_file) as repository:
+            await repository.set_guild_notification_channel("server-1", "channel-1")
+            await repository.set_guild_notification_channel("server-2", "channel-2")
+
+            first = await repository.get_guild_settings("server-1")
+            second = await repository.get_guild_settings("server-2")
+            missing = await repository.get_guild_settings("server-3")
+
+            assert first.notification_channel_id == "channel-1"
+            assert second.notification_channel_id == "channel-2"
+            assert missing is None
+
+            await repository.set_guild_notification_channel("server-1", "channel-new")
+            updated = await repository.get_guild_settings("server-1")
+            unchanged = await repository.get_guild_settings("server-2")
+
+            assert updated.notification_channel_id == "channel-new"
+            assert unchanged.notification_channel_id == "channel-2"
+
+    run(scenario())
+
+
+def test_existing_subscription_backfills_guild_settings(tmp_path):
+    database_file = tmp_path / "tracker.db"
+
+    async def scenario():
+        async with UserSQLiteDB(database_file) as repository:
+            await repository.register_user(
+                "owner",
+                "owner",
+                "Owner",
+                "server",
+                "legacy-channel",
+                "Ace#AP",
+                "p1",
+            )
+            await repository._connection().execute(
+                "DELETE FROM guild_settings WHERE server_id = ?", ("server",)
+            )
+
+        await initialize_database(database_file)
+
+        async with UserSQLiteDB(database_file) as repository:
+            settings = await repository.get_guild_settings("server")
+            assert settings.notification_channel_id == "legacy-channel"
 
     run(scenario())

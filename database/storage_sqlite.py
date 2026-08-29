@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS discord_users (
     PRIMARY KEY (server_id, discord_user_id)
 );
 
+CREATE TABLE IF NOT EXISTS guild_settings (
+    server_id TEXT PRIMARY KEY,
+    notification_channel_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS valorant_accounts (
     puuid TEXT PRIMARY KEY,
     game_name TEXT NOT NULL COLLATE NOCASE,
@@ -76,8 +83,24 @@ class MigrationResult:
     backup_path: Optional[Path] = None
 
 
+@dataclass(frozen=True)
+class SubscriptionRecord:
+    id: int
+    server_id: str
+    discord_user_id: str
+    valorant_account: str
+    valorant_puuid: str
+    last_polled_match_id: Optional[str]
+
+
 class DuplicateSubscriptionError(ValueError):
-    """Raised when the same account is already tracked in a server channel."""
+    """Raised when the same account is already tracked in a Discord server."""
+
+
+@dataclass(frozen=True)
+class GuildSettingsRecord:
+    server_id: str
+    notification_channel_id: str
 
 
 async def _configure(connection: aiosqlite.Connection) -> None:
@@ -94,6 +117,19 @@ async def initialize_database(database_file: Path = DATABASE_FILE) -> None:
         await connection.executescript(SCHEMA)
         await connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version) VALUES (1)"
+        )
+        # Existing installations used the channel stored on subscriptions.
+        # Preserve one current channel per guild as the initial server setting.
+        await connection.execute(
+            """
+            INSERT OR IGNORE INTO guild_settings(server_id, notification_channel_id)
+            SELECT server_id, MIN(channel_id)
+            FROM subscriptions
+            GROUP BY server_id
+            """
+        )
+        await connection.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version) VALUES (2)"
         )
         await connection.commit()
 
@@ -136,6 +172,14 @@ class UserSQLiteDB:
         try:
             await connection.execute(
                 """
+                INSERT OR IGNORE INTO guild_settings(
+                    server_id, notification_channel_id
+                ) VALUES (?, ?)
+                """,
+                (dc_server_id, dc_channel_id),
+            )
+            await connection.execute(
+                """
                 INSERT INTO discord_users(
                     server_id, discord_user_id, global_name, display_name
                 ) VALUES (?, ?, ?, ?)
@@ -158,6 +202,17 @@ class UserSQLiteDB:
                 """,
                 (val_puuid, game_name, tag, region),
             )
+            cursor = await connection.execute(
+                """
+                SELECT 1 FROM subscriptions
+                WHERE server_id = ? AND valorant_puuid = ?
+                """,
+                (dc_server_id, val_puuid),
+            )
+            if await cursor.fetchone():
+                raise DuplicateSubscriptionError(
+                    "Valorant account already registered in this server"
+                )
             await connection.execute(
                 """
                 INSERT INTO subscriptions(
@@ -166,19 +221,21 @@ class UserSQLiteDB:
                 """,
                 (dc_server_id, dc_id, val_puuid, dc_channel_id),
             )
-        except aiosqlite.IntegrityError as exc:
+        except (aiosqlite.IntegrityError, DuplicateSubscriptionError) as exc:
             await connection.execute("ROLLBACK TO register_subscription")
+            if isinstance(exc, DuplicateSubscriptionError):
+                raise
             raise DuplicateSubscriptionError(
-                "Valorant account already registered in this channel"
+                "Valorant account already registered in this server"
             ) from exc
         finally:
             await connection.execute("RELEASE register_subscription")
 
-    async def get_all(self):
+    async def list_subscriptions(self) -> list[SubscriptionRecord]:
         cursor = await self._connection().execute(
             """
             SELECT s.id AS subscription_id, s.server_id AS dc_server_id,
-                   s.discord_user_id AS dc_id, s.channel_id AS dc_channel_id,
+                   s.discord_user_id AS dc_id,
                    s.last_polled_match_id, a.puuid AS valorant_puuid,
                    a.game_name || '#' || a.tag AS valorant_account
             FROM subscriptions AS s
@@ -188,21 +245,48 @@ class UserSQLiteDB:
         )
         rows = await cursor.fetchall()
         return [
-            {
-                "dc_id": row["dc_id"],
-                "dc_server_id": row["dc_server_id"],
-                "dc_channel_id": row["dc_channel_id"],
-                "valorant_accounts": [
-                    {
-                        "subscription_id": row["subscription_id"],
-                        "valorant_account": row["valorant_account"],
-                        "valorant_puuid": row["valorant_puuid"],
-                        "last_polled_match_id": row["last_polled_match_id"],
-                    }
-                ],
-            }
+            SubscriptionRecord(
+                id=row["subscription_id"],
+                server_id=row["dc_server_id"],
+                discord_user_id=row["dc_id"],
+                valorant_account=row["valorant_account"],
+                valorant_puuid=row["valorant_puuid"],
+                last_polled_match_id=row["last_polled_match_id"],
+            )
             for row in rows
         ]
+
+    async def set_guild_notification_channel(
+        self, server_id: str, channel_id: str
+    ) -> GuildSettingsRecord:
+        await self._connection().execute(
+            """
+            INSERT INTO guild_settings(server_id, notification_channel_id)
+            VALUES (?, ?)
+            ON CONFLICT(server_id) DO UPDATE SET
+                notification_channel_id = excluded.notification_channel_id,
+                updated_at = CURRENT_TIMESTAMP
+            """,
+            (server_id, channel_id),
+        )
+        return GuildSettingsRecord(server_id, channel_id)
+
+    async def get_guild_settings(self, server_id: str) -> Optional[GuildSettingsRecord]:
+        cursor = await self._connection().execute(
+            """
+            SELECT server_id, notification_channel_id
+            FROM guild_settings
+            WHERE server_id = ?
+            """,
+            (server_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return GuildSettingsRecord(
+            server_id=row["server_id"],
+            notification_channel_id=row["notification_channel_id"],
+        )
 
     async def update_last_polled_match(
         self,

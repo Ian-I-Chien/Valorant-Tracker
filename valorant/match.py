@@ -1,42 +1,48 @@
-import os
-import json
+import logging
 import math
-import time
 import asyncio
 import discord
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime, timezone
-from .api import fetch_json, url_json
-from database.storage_json import UserJsonDB
+from .api import API_URLS, fetch_json
+from database.storage_sqlite import UserSQLiteDB
 from utils import fix_isoformat
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class Match:
-    def __init__(self, player_name, player_tag, region="ap"):
+    def __init__(self, player_name: str, player_tag: str, region: str = "ap"):
         self.last_match_id = None
         self.last_match_data = None
         self.player_name = player_name
         self.player_tag = player_tag
         self.region = region
 
-    async def get_rank_with_retries(self, player_instance, retries=5, delay=2):
+    async def get_rank_with_retries(
+        self, player_instance, retries: int = 5, delay: float = 2
+    ) -> Optional[dict[str, Any]]:
         """
         Fetch rank data with retries to avoid transient API failures.
         """
         attempt = 0
         while attempt < retries:
             try:
-                rank_data_dict = await player_instance.get_rank_by_api()
+                rank_data_dict = await player_instance.fetch_rank()
                 if rank_data_dict:
                     return rank_data_dict
-            except Exception as e:
-                print(f"Error fetching rank for {player_instance.player_name}: {e}")
+            except Exception:
+                LOGGER.exception(
+                    "Error fetching rank for %s", player_instance.player_name
+                )
             attempt += 1
             await asyncio.sleep(delay)
 
-        print(
-            f"Failed to fetch rank for {player_instance.player_name} "
-            f"after {retries} attempts."
+        LOGGER.warning(
+            "Failed to fetch rank for %s after %s attempts",
+            player_instance.player_name,
+            retries,
         )
         return None
 
@@ -163,7 +169,7 @@ class Match:
 
         return result
 
-    async def sorted_formatted_player(self):
+    async def build_embed(self) -> discord.Embed:
         """
         Build a Discord embed showing the last match summary and
         sorted player stats with rank, HS, KAST, etc.
@@ -171,18 +177,15 @@ class Match:
         from valorant.player import ValorantPlayer
 
         if self.last_match_data is None:
-            raise ValueError("sorted_formatted_player called with no match data.")
+            raise ValueError("build_embed called with no match data")
 
-        # Build a set of all registered Valorant accounts from JSON storage
-        async with UserJsonDB() as user_model:
-            users_data = await user_model.get_all()
+        # Build a set of all registered Valorant accounts from SQLite storage
+        async with UserSQLiteDB() as user_model:
+            subscriptions = await user_model.list_subscriptions()
 
-        registered_accounts = set()
-        for user in users_data:
-            for acc in user.get("valorant_accounts", []):
-                valorant_account = acc.get("valorant_account")
-                if valorant_account:
-                    registered_accounts.add(valorant_account)
+        registered_accounts = {
+            subscription.valorant_account for subscription in subscriptions
+        }
 
         melee_killers, melee_victims = self.check_melee_info()
         players_kast = self.calculate_kast()
@@ -361,21 +364,21 @@ class Match:
 
         return embed
 
-    async def get_stored_match_by_id_by_api(self):
+    async def fetch_match(self) -> Optional[dict[str, Any]]:
         """
         Fetch full match data using the stored last_match_id.
         """
-        url = url_json["match"].format(region=self.region, matchid=self.last_match_id)
+        url = API_URLS["match"].format(region=self.region, matchid=self.last_match_id)
         self.last_match_data = await fetch_json(url)
         if not self.last_match_data:
             return None
         return self.last_match_data
 
-    async def get_matches_v3_by_api(self):
+    async def fetch_recent_matches(self) -> Optional[dict[str, Any]]:
         """
         Fetch recent matches for the player from Henrikdev API (v3).
         """
-        url = url_json["matches_v3"].format(
+        url = API_URLS["matches_v3"].format(
             region=self.region,
             player_name=self.player_name,
             player_tag=self.player_tag,
@@ -389,7 +392,7 @@ class Match:
         """
         Fetch and store the latest match ID for this player.
         """
-        matches_data = await self.get_matches_v3_by_api()
+        matches_data = await self.fetch_recent_matches()
         if not matches_data:
             return None
 
