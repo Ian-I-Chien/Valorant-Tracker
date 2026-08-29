@@ -7,7 +7,7 @@ import discord
 from database.storage_sqlite import UserSQLiteDB
 from valorant.match import Match
 from valorant.player import ValorantPlayer
-from utils import get_env_or_interaction_channel, parse_player_name
+from utils import parse_player_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ _userdb_lock: Optional[asyncio.Lock] = None
 @dataclass(frozen=True)
 class PollingMatchResult:
     embed: discord.Embed
-    dc_channel_id: Optional[str]
+    server_id: str
     dc_id: str
     valorant_puuid: str
     match_id: str
@@ -66,7 +66,6 @@ async def handle_polling_matches(
                         player_name, player_tag = account_str.split("#")
                         valorant_puuid = subscription.valorant_puuid
                         dc_id = subscription.discord_user_id
-                        dc_channel_id = subscription.channel_id
 
                         # Read the last processed match ID for this account
                         last_polled_match_id = subscription.last_polled_match_id
@@ -129,7 +128,7 @@ async def handle_polling_matches(
                         # Delivery must succeed before this match is checkpointed.
                         return PollingMatchResult(
                             embed=await match.build_embed(),
-                            dc_channel_id=dc_channel_id,
+                            server_id=subscription.server_id,
                             dc_id=dc_id,
                             valorant_puuid=valorant_puuid,
                             match_id=last_match_id,
@@ -160,6 +159,60 @@ async def mark_match_delivered(result: PollingMatchResult) -> bool:
                 expected_match_id=result.previous_match_id,
                 match_id=result.match_id,
             )
+
+
+async def get_notification_channel_id(server_id: str) -> Optional[str]:
+    async with UserSQLiteDB() as repository:
+        settings = await repository.get_guild_settings(server_id)
+    return settings.notification_channel_id if settings else None
+
+
+async def set_notification_channel(
+    interaction: discord.Interaction, channel: discord.TextChannel
+) -> None:
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+
+    bot_member = interaction.guild.me
+    permissions = channel.permissions_for(bot_member) if bot_member else None
+    if not permissions or not (
+        permissions.view_channel
+        and permissions.send_messages
+        and permissions.embed_links
+    ):
+        await interaction.response.send_message(
+            "I need View Channel, Send Messages, and Embed Links permissions "
+            f"in {channel.mention}.",
+            ephemeral=True,
+        )
+        return
+
+    async with UserSQLiteDB() as repository:
+        await repository.set_guild_notification_channel(
+            str(interaction.guild.id), str(channel.id)
+        )
+
+    await interaction.response.send_message(
+        f"Match notifications will be sent to {channel.mention}.", ephemeral=True
+    )
+
+
+async def show_server_config(interaction: discord.Interaction) -> None:
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+
+    channel_id = await get_notification_channel_id(str(interaction.guild.id))
+    if channel_id is None:
+        message = "No notification channel is configured. Use `/set_channel`."
+    else:
+        message = f"Match notification channel: <#{channel_id}>."
+    await interaction.response.send_message(message, ephemeral=True)
 
 
 async def delete_valorant_account(
@@ -205,6 +258,22 @@ async def registered_with_valorant_account(
     Registers a Valorant account to a Discord user.
     Saves the user, Valorant account, and channel subscription in SQLite.
     """
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+
+    dc_server_id = str(interaction.guild.id)
+    dc_channel_id = await get_notification_channel_id(dc_server_id)
+    if dc_channel_id is None:
+        await interaction.response.send_message(
+            "This server has no notification channel. "
+            "Ask an administrator to use `/set_channel` first.",
+            ephemeral=True,
+        )
+        return
+
     player_name, player_tag = await parse_player_name(interaction, valorant_account)
     if not player_name or not player_tag:
         await interaction.edit_original_response(
@@ -215,15 +284,6 @@ async def registered_with_valorant_account(
     dc_id = str(interaction.user.id)
     dc_global_name = interaction.user.global_name
     dc_display_name = interaction.user.display_name
-    dc_server_id = str(interaction.guild.id)
-    channel_id = get_env_or_interaction_channel(interaction)
-    if channel_id is None:
-        await interaction.edit_original_response(
-            content="Registration failed: no Discord channel is available."
-        )
-        return
-    dc_channel_id = str(channel_id)
-
     LOGGER.debug(
         "Registering Discord user %s in server %s, channel %s",
         dc_id,
