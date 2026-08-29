@@ -238,7 +238,14 @@ async def predict_registered_player(
         )
         return
     await interaction.response.defer()
-    player = await resolve_player_query(str(interaction.guild.id), account_query)
+    try:
+        player = await resolve_player_query(str(interaction.guild.id), account_query)
+    except Exception:
+        LOGGER.exception("Could not resolve player for prediction: %s", account_query)
+        await interaction.edit_original_response(
+            content="The Valorant API is temporarily unavailable. Please try again later."
+        )
+        return
     if player is None:
         await interaction.edit_original_response(
             content="No unique registered player matched that username. "
@@ -246,7 +253,16 @@ async def predict_registered_player(
         )
         return
     player_name, player_tag = player.riot_id.rsplit("#", 1)
-    matches_payload = await Match(player_name, player_tag).fetch_recent_matches(size=20)
+    try:
+        matches_payload = await Match(player_name, player_tag).fetch_recent_matches(
+            size=20
+        )
+    except Exception:
+        LOGGER.exception("Could not fetch prediction data for %s", player.riot_id)
+        await interaction.edit_original_response(
+            content="The Valorant API is temporarily unavailable. Please try again later."
+        )
+        return
     matches = (matches_payload or {}).get("data") or []
     performances = extract_recent_performances(matches, player.puuid)
     result = predict_next_match(player.riot_id, performances)
@@ -283,7 +299,14 @@ async def show_registered_player_info(
         )
         return
     await interaction.response.defer()
-    resolved = await resolve_player_query(str(interaction.guild.id), account_query)
+    try:
+        resolved = await resolve_player_query(str(interaction.guild.id), account_query)
+    except Exception:
+        LOGGER.exception("Could not resolve player info query: %s", account_query)
+        await interaction.edit_original_response(
+            content="The Valorant API is temporarily unavailable. Please try again later."
+        )
+        return
     if resolved is None:
         await interaction.edit_original_response(
             content="No unique registered player matched that username. "
@@ -292,10 +315,17 @@ async def show_registered_player_info(
         return
     name, tag = resolved.riot_id.rsplit("#", 1)
     player = ValorantPlayer(name, tag)
-    matches_payload, rank_history = await asyncio.gather(
-        Match(name, tag).fetch_recent_matches(size=20),
-        player.fetch_rank_history(),
-    )
+    try:
+        matches_payload, rank_history = await asyncio.gather(
+            Match(name, tag).fetch_recent_matches(size=20),
+            player.fetch_rank_history(),
+        )
+    except Exception:
+        LOGGER.exception("Could not fetch player info for %s", resolved.riot_id)
+        await interaction.edit_original_response(
+            content="The Valorant API is temporarily unavailable. Please try again later."
+        )
+        return
     data = build_player_info(
         resolved.riot_id,
         resolved.puuid,
