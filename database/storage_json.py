@@ -7,21 +7,34 @@ BASE_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(BASE_DIR, "valorant_data.json")
 
 
+class DatabaseLoadError(RuntimeError):
+    """Raised when an existing JSON database cannot be loaded safely."""
+
+
 def _load():
     """
     Load the JSON database file.
-    If the file does not exist or is corrupted,
-    return a default empty data structure.
+    If the file does not exist, return a default empty data structure.
+    Existing but unreadable or invalid files must never be treated as empty.
     """
-    if not os.path.exists(DATA_FILE):
-        return {"users": {}}
-
     try:
         with open(DATA_FILE, "r", encoding="utf8") as f:
-            return json.load(f)
-    except Exception:
-        # File corrupted → return fallback structure
+            data = json.load(f)
+    except FileNotFoundError:
         return {"users": {}}
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise DatabaseLoadError(
+            f"Unable to safely load database file: {DATA_FILE}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise DatabaseLoadError("Database root must be a JSON object.")
+
+    users = data.get("users")
+    if users is not None and not isinstance(users, dict):
+        raise DatabaseLoadError("Database 'users' field must be a JSON object.")
+
+    return data
 
 
 def _save(data):
@@ -57,7 +70,8 @@ class BaseJsonDB:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        _save(self.data)
+        if exc_type is None:
+            _save(self.data)
 
 
 class UserJsonDB(BaseJsonDB):
