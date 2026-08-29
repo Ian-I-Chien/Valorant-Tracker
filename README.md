@@ -17,12 +17,10 @@ This bot is running on R-PI3 with python version 3.11.2
 ```
 BOT_TOKEN= "TOKEN"
 ```
-If you have multiple **BOT_TOKENS**, you should separate them using a comma.
-
 
 [API_Token](https://github.com/Henrik-3/unofficial-valorant-api)
 ```
-API_TOKEN= "API_TOKEN"
+API_KEY= "API_TOKEN"
 ```
 
 To run the Bot:
@@ -35,6 +33,18 @@ python3 main.py
 To use the bot, simply type the following commands in your Discord server where the bot is active:
 
 ## Bot Commands on Discord
+
+```
+/set_channel #valorant-results
+```
+An administrator must configure the server's notification channel before
+players can register accounts. This setting is stored separately for each
+Discord server and can be changed without restarting the bot.
+
+```
+/show_config
+```
+Show the notification channel configured for the current Discord server.
 
 ```
 /reg_val Valorant-User-Name#User-Tag

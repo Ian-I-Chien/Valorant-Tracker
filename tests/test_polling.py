@@ -10,7 +10,6 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
             id=1,
             server_id="discord-server",
             discord_user_id="discord-user",
-            channel_id="discord-channel",
             valorant_account="player#tag",
             valorant_puuid="player-puuid",
             last_polled_match_id=None,

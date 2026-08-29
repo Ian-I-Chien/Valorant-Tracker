@@ -1,12 +1,6 @@
-import logging
-import os
 from typing import Optional
 
 import discord
-from dotenv import load_dotenv
-
-load_dotenv()
-LOGGER = logging.getLogger(__name__)
 
 
 def fix_isoformat(iso_time: str) -> str:
@@ -17,31 +11,6 @@ def fix_isoformat(iso_time: str) -> str:
         date_part, fraction = iso_time.split(".", 1)
         iso_time = f"{date_part}.{fraction.ljust(6, '0')}"
     return iso_time
-
-
-def get_env_or_interaction_channel(
-    interaction: discord.Interaction,
-) -> Optional[int]:
-    configured_ids = [
-        int(value.strip())
-        for value in os.getenv("CHANNEL_ID", "").split(",")
-        if value.strip().isdigit()
-    ]
-
-    if interaction.guild:
-        for channel_id in configured_ids:
-            channel = interaction.guild.get_channel(channel_id)
-            if channel:
-                LOGGER.debug(
-                    "Using configured channel %s (%s)", channel.name, channel.id
-                )
-                return channel.id
-
-    channel = interaction.channel
-    if channel is None:
-        return None
-    LOGGER.debug("Using interaction channel %s", channel.id)
-    return channel.id
 
 
 async def parse_player_name(

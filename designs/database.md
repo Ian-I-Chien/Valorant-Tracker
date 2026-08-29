@@ -102,11 +102,31 @@ CREATE TABLE valorant_accounts (
 Account comparisons should use normalized game name and tag values for lookup,
 but PUUID remains the authoritative identity.
 
+### Discord server settings
+
+Deployment secrets belong in `.env`, while notification routing is configured
+independently by each Discord server administrator.
+
+```sql
+CREATE TABLE guild_settings (
+    server_id               TEXT PRIMARY KEY,
+    notification_channel_id TEXT NOT NULL,
+    created_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Administrators set this value with `/set_channel`. Registration is rejected
+until the current server has a notification channel. Delivery resolves the
+channel from `server_id` at send time, so changing it immediately redirects all
+existing subscriptions without a bot restart.
+
 ### Subscriptions
 
-A subscription connects an owner, a Valorant account, and the Discord channel
-that receives notifications. The checkpoint belongs here rather than on the
-Discord user or global Valorant account.
+A subscription connects an owner and a Valorant account within a Discord
+server. The checkpoint belongs here rather than on the Discord user or global
+Valorant account. The current implementation retains `channel_id` for database
+compatibility, but delivery uses `guild_settings.notification_channel_id`.
 
 ```sql
 CREATE TABLE subscriptions (
@@ -134,9 +154,9 @@ CREATE INDEX idx_subscriptions_polling
     ON subscriptions (valorant_puuid, last_polled_match_id);
 ```
 
-The uniqueness rule prevents two users from creating duplicate notifications
-for the same Valorant account in the same server channel. The owner fields still
-make deletion authorization explicit.
+Registration also checks `(server_id, valorant_puuid)` so two users cannot
+create duplicate notifications for the same account in one Discord server. The
+owner fields still make deletion authorization explicit.
 
 ## Operation Boundaries
 
@@ -147,7 +167,7 @@ make deletion authorization explicit.
 3. Begin a transaction.
 4. Upsert the Discord user by `(server_id, discord_user_id)`.
 5. Upsert the Valorant account by PUUID.
-6. Insert the subscription with its channel.
+6. Insert the subscription after verifying the server has guild settings.
 7. Commit.
 
 The first successful poll sets `last_polled_match_id` to the current latest
