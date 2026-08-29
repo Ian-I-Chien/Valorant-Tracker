@@ -254,18 +254,17 @@ async def registered_with_valorant_account(
     async with lock:
         async with UserSQLiteDB() as user_model:
             try:
-                canonical_account = f"{player.player_name}#{player.player_tag}"
                 await user_model.register_user(
                     dc_id=dc_id,
                     dc_global_name=dc_global_name,
                     dc_display_name=dc_display_name,
                     dc_server_id=dc_server_id,
                     dc_channel_id=dc_channel_id,
-                    val_account=canonical_account,
+                    val_account=valorant_account,
                     val_puuid=str(account_data["puuid"]),
                 )
                 await interaction.edit_original_response(
-                    content=f"Successfully registered `{canonical_account}`!"
+                    content=f"Successfully registered `{valorant_account}`!"
                 )
 
             except ValueError as e:
