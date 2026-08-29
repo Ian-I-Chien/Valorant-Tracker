@@ -41,3 +41,12 @@ class ValorantPlayer:
         rank_data = await fetch_json(url)
         self.rank_data = rank_data.get("data") if rank_data else None
         return self.rank_data
+
+    async def fetch_rank_history(self) -> list[dict[str, Any]]:
+        url = API_URLS["mmr_history"].format(
+            region=self.region,
+            player_name=self.player_name,
+            player_tag=self.player_tag,
+        )
+        payload = await fetch_json(url)
+        return (payload or {}).get("data") or []

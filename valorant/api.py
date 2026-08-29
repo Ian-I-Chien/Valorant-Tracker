@@ -20,6 +20,7 @@ API_URLS = {
     "account": "https://api.henrikdev.xyz/valorant/v1/account/{player_name}/{player_tag}",
     "match": "https://api.henrikdev.xyz/valorant/v4/match/{region}/{matchid}",
     "matches_v3": "https://api.henrikdev.xyz/valorant/v3/matches/{region}/{player_name}/{player_tag}",
+    "mmr_history": "https://api.henrikdev.xyz/valorant/v1/mmr-history/{region}/{player_name}/{player_tag}",
 }
 
 
