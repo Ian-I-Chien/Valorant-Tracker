@@ -162,6 +162,8 @@ result as text.
 HenrikDev currently returns at most ten recent matches to this workflow, so the
 30-day filter can only evaluate the eligible matches present in that response.
 
+<img src="pic/prediction_example.png" alt="Pre-match prediction card example" width="600">
+
 ## Development
 
 Install the requirements, then run:
