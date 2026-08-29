@@ -1,21 +1,20 @@
 import asyncio
 
 import commands
+from database.storage_sqlite import SubscriptionRecord
 
 
 def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
-    account = {
-        "valorant_account": "player#tag",
-        "valorant_puuid": "player-puuid",
-        "last_polled_match_id": None,
-        "subscription_id": 1,
-    }
-    users = [
-        {
-            "dc_id": "discord-user",
-            "dc_channel_id": "discord-channel",
-            "valorant_accounts": [account],
-        }
+    subscriptions = [
+        SubscriptionRecord(
+            id=1,
+            server_id="discord-server",
+            discord_user_id="discord-user",
+            channel_id="discord-channel",
+            valorant_account="player#tag",
+            valorant_puuid="player-puuid",
+            last_polled_match_id=None,
+        )
     ]
 
     class FakeUserSQLiteDB:
@@ -27,8 +26,8 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         async def __aexit__(self, exc_type, exc, traceback):
             return None
 
-        async def get_all(self):
-            return users
+        async def list_subscriptions(self):
+            return subscriptions
 
         async def update_last_polled_match(
             self, subscription_id, expected_match_id, match_id
@@ -47,7 +46,7 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         async def get_last_match_id(self):
             return "existing-match"
 
-        async def get_stored_match_by_id_by_api(self):
+        async def fetch_match(self):
             raise AssertionError("existing match data should not be fetched")
 
     monkeypatch.setattr(commands, "UserSQLiteDB", FakeUserSQLiteDB)
