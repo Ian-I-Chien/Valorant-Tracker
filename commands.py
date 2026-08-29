@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 from dataclasses import dataclass
 from typing import Optional
@@ -7,6 +8,11 @@ import discord
 from database.storage_sqlite import UserSQLiteDB
 from valorant.match import Match
 from valorant.player import ValorantPlayer
+from valorant.prediction import (
+    PredictionCardRenderer,
+    extract_recent_performances,
+    predict_next_match,
+)
 from utils import parse_player_name
 
 LOGGER = logging.getLogger(__name__)
@@ -180,6 +186,53 @@ async def get_notification_channel_id(server_id: str) -> Optional[str]:
     async with UserSQLiteDB() as repository:
         settings = await repository.get_guild_settings(server_id)
     return settings.notification_channel_id if settings else None
+
+
+async def predict_registered_player(
+    interaction: discord.Interaction, account_query: str
+) -> None:
+    """Create a pre-match prediction for a player registered in this server."""
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+    await interaction.response.defer()
+    async with UserSQLiteDB() as repository:
+        subscription = await repository.find_subscription(
+            str(interaction.guild.id), account_query
+        )
+    if subscription is None:
+        await interaction.edit_original_response(
+            content="No unique registered player matched that username. Try `name#tag`."
+        )
+        return
+    player_name, player_tag = subscription.valorant_account.rsplit("#", 1)
+    matches_payload = await Match(player_name, player_tag).fetch_recent_matches(size=20)
+    matches = (matches_payload or {}).get("data") or []
+    performances = extract_recent_performances(matches, subscription.valorant_puuid)
+    result = predict_next_match(subscription.valorant_account, performances)
+    if result is None:
+        await interaction.edit_original_response(
+            content=f"`{subscription.valorant_account}` has no completed matches in the last 30 days, so there is not enough data to predict."
+        )
+        return
+    try:
+        image = PredictionCardRenderer().render(result)
+        await interaction.edit_original_response(
+            attachments=[
+                discord.File(io.BytesIO(image), filename="prematch-prediction.png")
+            ]
+        )
+    except Exception:
+        LOGGER.exception("Could not render prediction card")
+        await interaction.edit_original_response(
+            content=(
+                f"**{result.riot_id} — next match prediction**\n"
+                f"Win chance: **{result.win_probability}%** ({result.confidence.lower()} confidence)\n"
+                f"Based on {result.match_count} matches in the last 30 days."
+            )
+        )
 
 
 async def set_notification_channel(
