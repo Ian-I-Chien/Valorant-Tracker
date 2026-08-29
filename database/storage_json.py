@@ -162,18 +162,25 @@ class UserJsonDB(BaseJsonDB):
 
         return False
 
-    async def remove_valorant_account(self, valorant_account: str) -> bool:
+    async def remove_valorant_account(
+        self, dc_id: str, valorant_account: str
+    ) -> bool:
         """
-        Remove a Valorant account from all users.
-        Returns True if at least one account was removed.
+        Remove a Valorant account belonging to one Discord user.
+        Returns True if the account was removed.
         """
-        removed = False
-        for user in self.data["users"].values():
-            accounts = user.get("valorant_accounts", [])
-            new_accounts = [
-                a for a in accounts if a["valorant_account"] != valorant_account
-            ]
-            if len(new_accounts) != len(accounts):
-                removed = True
-                user["valorant_accounts"] = new_accounts
-        return removed
+        user = self.data["users"].get(dc_id)
+        if user is None:
+            return False
+
+        accounts = user.get("valorant_accounts", [])
+        new_accounts = [
+            account
+            for account in accounts
+            if account["valorant_account"] != valorant_account
+        ]
+        if len(new_accounts) == len(accounts):
+            return False
+
+        user["valorant_accounts"] = new_accounts
+        return True

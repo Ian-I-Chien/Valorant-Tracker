@@ -148,12 +148,16 @@ async def delete_valorant_account(
         return
 
     lock = get_userdb_lock()
+    dc_id = str(interaction.user.id)
 
     # Serialize deletion with polling/registration so changes
     # are not overwritten.
     async with lock:
         async with UserJsonDB() as user_model:
-            removed = await user_model.remove_valorant_account(valorant_account)
+            removed = await user_model.remove_valorant_account(
+                dc_id=dc_id,
+                valorant_account=valorant_account,
+            )
 
     if removed:
         await interaction.edit_original_response(
