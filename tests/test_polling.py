@@ -8,6 +8,7 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         "valorant_account": "player#tag",
         "valorant_puuid": "player-puuid",
         "last_polled_match_id": None,
+        "subscription_id": 1,
     }
     users = [
         {
@@ -17,7 +18,9 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         }
     ]
 
-    class FakeUserJsonDB:
+    class FakeUserSQLiteDB:
+        checkpoint = None
+
         async def __aenter__(self):
             return self
 
@@ -26,6 +29,16 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
 
         async def get_all(self):
             return users
+
+        async def update_last_polled_match(
+            self, subscription_id, expected_match_id, match_id
+        ):
+            self.__class__.checkpoint = (
+                subscription_id,
+                expected_match_id,
+                match_id,
+            )
+            return True
 
     class FakeMatch:
         def __init__(self, player_name, player_tag):
@@ -37,11 +50,11 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         async def get_stored_match_by_id_by_api(self):
             raise AssertionError("existing match data should not be fetched")
 
-    monkeypatch.setattr(commands, "UserJsonDB", FakeUserJsonDB)
+    monkeypatch.setattr(commands, "UserSQLiteDB", FakeUserSQLiteDB)
     monkeypatch.setattr(commands, "Match", FakeMatch)
     commands._userdb_lock = None
 
     result = asyncio.run(commands.handle_polling_matches())
 
     assert result is None
-    assert account["last_polled_match_id"] == "existing-match"
+    assert FakeUserSQLiteDB.checkpoint == (1, None, "existing-match")
