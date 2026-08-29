@@ -171,11 +171,18 @@ async def set_notification_channel(
     interaction: discord.Interaction, channel: discord.TextChannel
 ) -> None:
     if interaction.guild is None:
+        LOGGER.warning(
+            "Rejected notification channel change outside a server: actor_id=%s",
+            interaction.user.id,
+        )
         await interaction.response.send_message(
             "This command can only be used in a Discord server.", ephemeral=True
         )
         return
 
+    server_id = str(interaction.guild.id)
+    channel_id = str(channel.id)
+    actor_id = str(interaction.user.id)
     bot_member = interaction.guild.me
     permissions = channel.permissions_for(bot_member) if bot_member else None
     if not permissions or not (
@@ -183,6 +190,13 @@ async def set_notification_channel(
         and permissions.send_messages
         and permissions.embed_links
     ):
+        LOGGER.warning(
+            "Rejected notification channel change: server_id=%s "
+            "channel_id=%s actor_id=%s reason=missing_permissions",
+            server_id,
+            channel_id,
+            actor_id,
+        )
         await interaction.response.send_message(
             "I need View Channel, Send Messages, and Embed Links permissions "
             f"in {channel.mention}.",
@@ -191,9 +205,17 @@ async def set_notification_channel(
         return
 
     async with UserSQLiteDB() as repository:
-        await repository.set_guild_notification_channel(
-            str(interaction.guild.id), str(channel.id)
-        )
+        existing_settings = await repository.get_guild_settings(server_id)
+        await repository.set_guild_notification_channel(server_id, channel_id)
+
+    action = "created" if existing_settings is None else "updated"
+    LOGGER.info(
+        "Guild notification channel %s: server_id=%s channel_id=%s actor_id=%s",
+        action,
+        server_id,
+        channel_id,
+        actor_id,
+    )
 
     await interaction.response.send_message(
         f"Match notifications will be sent to {channel.mention}.", ephemeral=True
