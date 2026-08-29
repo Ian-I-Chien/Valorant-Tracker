@@ -7,7 +7,7 @@ import discord
 from typing import Optional
 from datetime import datetime, timezone
 from .api import fetch_json, url_json
-from database.storage_json import UserJsonDB
+from database.storage_sqlite import UserSQLiteDB
 from utils import fix_isoformat
 
 
@@ -173,8 +173,8 @@ class Match:
         if self.last_match_data is None:
             raise ValueError("sorted_formatted_player called with no match data.")
 
-        # Build a set of all registered Valorant accounts from JSON storage
-        async with UserJsonDB() as user_model:
+        # Build a set of all registered Valorant accounts from SQLite storage
+        async with UserSQLiteDB() as user_model:
             users_data = await user_model.get_all()
 
         registered_accounts = set()
