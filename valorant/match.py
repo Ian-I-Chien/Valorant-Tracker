@@ -473,7 +473,7 @@ class Match:
             return None
         return self.last_match_data
 
-    async def fetch_recent_matches(self) -> Optional[dict[str, Any]]:
+    async def fetch_recent_matches(self, size: int = 5) -> Optional[dict[str, Any]]:
         """
         Fetch recent matches for the player from Henrikdev API (v3).
         """
@@ -482,7 +482,7 @@ class Match:
             player_name=self.player_name,
             player_tag=self.player_tag,
         )
-        matches_data = await fetch_json(url)
+        matches_data = await fetch_json(url, params={"size": max(1, min(size, 20))})
         if not matches_data:
             return None
         return matches_data
