@@ -148,7 +148,7 @@ The notification includes:
 | Rank | Competitive rank when available |
 | Party | Team-local DUO, TRIO, or stack label for shared party IDs |
 
-<img src="pic/output_example.png" alt="Graphical Discord match notification with party labels" width="780">
+<img src="pic/match_scoreboard_example.png" alt="Graphical Discord match notification with party labels" width="780">
 
 ## Pre-Match Prediction
 
