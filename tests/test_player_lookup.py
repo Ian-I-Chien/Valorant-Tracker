@@ -64,3 +64,50 @@ def test_unregistered_short_name_is_not_sent_to_account_api(monkeypatch):
     monkeypatch.setattr(commands.ValorantPlayer, "fetch_account", unexpected_fetch)
 
     assert asyncio.run(commands.resolve_player_query("guild-1", "unknown")) is None
+
+
+class FakeResponse:
+    async def defer(self):
+        return None
+
+
+class FakeInteraction:
+    def __init__(self):
+        self.guild = SimpleNamespace(id="guild-1")
+        self.response = FakeResponse()
+        self.edits = []
+
+    async def edit_original_response(self, **kwargs):
+        self.edits.append(kwargs)
+
+
+def test_info_reports_api_failure_after_defer(monkeypatch):
+    async def failing_resolver(server_id, account_query):
+        raise OSError("upstream unavailable")
+
+    monkeypatch.setattr(commands, "resolve_player_query", failing_resolver)
+    interaction = FakeInteraction()
+
+    asyncio.run(commands.show_registered_player_info(interaction, "Player#TAG"))
+
+    assert interaction.edits == [
+        {
+            "content": "The Valorant API is temporarily unavailable. Please try again later."
+        }
+    ]
+
+
+def test_predict_reports_api_failure_after_defer(monkeypatch):
+    async def failing_resolver(server_id, account_query):
+        raise OSError("upstream unavailable")
+
+    monkeypatch.setattr(commands, "resolve_player_query", failing_resolver)
+    interaction = FakeInteraction()
+
+    asyncio.run(commands.predict_registered_player(interaction, "Player#TAG"))
+
+    assert interaction.edits == [
+        {
+            "content": "The Valorant API is temporarily unavailable. Please try again later."
+        }
+    ]

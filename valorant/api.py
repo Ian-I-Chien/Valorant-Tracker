@@ -152,7 +152,8 @@ async def _request_json(
         "Authorization": os.getenv("API_KEY", ""),
         "accept": "application/json",
     }
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=20, connect=8)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.get(url, headers=headers, params=params) as response:
             if response.status == HTTP_OK:
                 return await response.json()
