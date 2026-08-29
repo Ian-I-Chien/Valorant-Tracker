@@ -28,6 +28,7 @@ class MatchCardPlayer:
     agent_name: str
     agent_id: str
     team_id: str
+    party_id: Optional[str]
     rank_name: str
     rank_icon_url: Optional[str]
     kills: int
@@ -119,6 +120,33 @@ class AssetCache:
             return None
 
 
+def _build_party_styles(
+    teams: dict[str, list[MatchCardPlayer]],
+) -> dict[tuple[str, str], tuple[str, str]]:
+    styles: dict[tuple[str, str], tuple[str, str]] = {}
+    colors = ("#bd7bff", "#45d6c4", "#ffae57", "#f074a5")
+    for team_id in ("Blue", "Red"):
+        groups: dict[str, list[MatchCardPlayer]] = {}
+        for player in teams[team_id]:
+            if player.party_id:
+                groups.setdefault(player.party_id, []).append(player)
+        grouped_parties = [group for group in groups.values() if len(group) > 1]
+        for group_index, group in enumerate(grouped_parties):
+            size_name = {
+                2: "DUO",
+                3: "TRIO",
+                4: "4 STACK",
+                5: "5 STACK",
+            }[len(group)]
+            party_id = group[0].party_id
+            if party_id:
+                styles[(team_id, party_id)] = (
+                    f"{size_name} {chr(65 + group_index)}",
+                    colors[group_index % len(colors)],
+                )
+    return styles
+
+
 class MatchCardRenderer:
     def __init__(self, assets: Optional[AssetCache] = None):
         self.assets = assets or AssetCache()
@@ -191,6 +219,7 @@ class MatchCardRenderer:
             "Blue": [p for p in data.players if p.team_id == "Blue"][:5],
             "Red": [p for p in data.players if p.team_id == "Red"][:5],
         }
+        party_styles = _build_party_styles(teams)
         player_indexes = {
             id(player): index for index, player in enumerate(data.players)
         }
@@ -226,6 +255,19 @@ class MatchCardRenderer:
                     font=_font(15),
                     fill="#aebcc7",
                 )
+                party_style = party_styles.get((player.team_id, player.party_id or ""))
+                if party_style:
+                    party_label, party_color = party_style
+                    badge = (left + 458, top + 38, left + 540, top + 59)
+                    draw.rounded_rectangle(badge, radius=8, fill=party_color)
+                    draw.text(
+                        (left + 499, top + 48),
+                        party_label,
+                        anchor="mm",
+                        font=_font(11, True),
+                        fill="#0f1923",
+                    )
+
                 rr = ""
                 if player.rank_rating is not None and player.rr_change is not None:
                     rr = f"  RR {player.rank_rating} ({player.rr_change:+d})"
