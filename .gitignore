@@ -10,4 +10,5 @@ __pycache__/
 /testcase/*.json
 /config/constants.json
 /data/user_data.json
+/data/assets/
 /url/

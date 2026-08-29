@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from .api import API_URLS, fetch_json
 from database.storage_sqlite import UserSQLiteDB
 from utils import fix_isoformat
+from valorant.match_card import MatchCardData, MatchCardPlayer, MatchCardRenderer
 
 
 LOGGER = logging.getLogger(__name__)
@@ -363,6 +364,103 @@ class Match:
         embed.description = formatted_info
 
         return embed
+
+    async def build_match_card(self) -> bytes:
+        """Build a graphical scoreboard for the currently loaded match."""
+        from valorant.player import ValorantPlayer
+
+        if self.last_match_data is None:
+            raise ValueError("build_match_card called with no match data")
+
+        data = self.last_match_data["data"]
+        async with UserSQLiteDB() as user_model:
+            subscriptions = await user_model.list_subscriptions()
+        registered_accounts = {
+            subscription.valorant_account.casefold() for subscription in subscriptions
+        }
+        players_kast = self.calculate_kast()
+        sorted_players = sorted(
+            data["players"], key=lambda player: player["stats"]["score"], reverse=True
+        )
+        rank_data = await asyncio.gather(
+            *[
+                self.get_rank_with_retries(
+                    ValorantPlayer(player["name"], player["tag"])
+                )
+                for player in sorted_players
+            ]
+        )
+        total_rounds = sum(data["teams"][0]["rounds"].values())
+        card_players = []
+        for player, rank in zip(sorted_players, rank_data):
+            stats = player.get("stats", {})
+            shots = sum(
+                stats.get(key, 0) for key in ("bodyshots", "headshots", "legshots")
+            )
+            riot_id = f"{player['name']}#{player['tag']}"
+            card_players.append(
+                MatchCardPlayer(
+                    riot_id=riot_id,
+                    agent_name=player["agent"].get("name", "Unknown Agent"),
+                    agent_id=player["agent"].get("id", ""),
+                    team_id=player["team_id"],
+                    rank_name=(rank or {}).get("currenttierpatched", "Unrated"),
+                    rank_icon_url=(rank or {}).get("images", {}).get("small"),
+                    kills=stats.get("kills", 0),
+                    deaths=stats.get("deaths", 0),
+                    assists=stats.get("assists", 0),
+                    acs=math.floor(stats.get("score", 0) / max(total_rounds, 1)),
+                    headshot_percentage=(
+                        stats.get("headshots", 0) / shots * 100 if shots else 0
+                    ),
+                    kast=players_kast.get(player["puuid"], 0),
+                    rank_rating=(rank or {}).get("ranking_in_tier"),
+                    rr_change=(rank or {}).get("mmr_change_to_last_game"),
+                    registered=riot_id.casefold() in registered_accounts,
+                )
+            )
+
+        blue_wins = next(
+            team["rounds"]["won"] for team in data["teams"] if team["team_id"] == "Blue"
+        )
+        red_wins = next(
+            team["rounds"]["won"] for team in data["teams"] if team["team_id"] == "Red"
+        )
+        tracked_player = next(
+            (
+                player
+                for player in sorted_players
+                if f"{player['name']}#{player['tag']}".casefold()
+                == f"{self.player_name}#{self.player_tag}".casefold()
+            ),
+            None,
+        )
+        tracked_won = bool(
+            tracked_player
+            and (
+                (tracked_player["team_id"] == "Blue" and blue_wins > red_wins)
+                or (tracked_player["team_id"] == "Red" and red_wins > blue_wins)
+            )
+        )
+        started_at = datetime.fromisoformat(
+            fix_isoformat(data["metadata"]["started_at"])
+        )
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        result = "VICTORY" if tracked_won else "DEFEAT"
+        if blue_wins == red_wins:
+            result = "DRAW"
+
+        card_data = MatchCardData(
+            map_name=data["metadata"]["map"]["name"],
+            map_id=data["metadata"]["map"]["id"],
+            queue_name=data["metadata"]["queue"]["name"],
+            score=f"{blue_wins} : {red_wins}",
+            result=result,
+            played_at=started_at.astimezone().strftime("%Y/%m/%d %H:%M"),
+            players=tuple(card_players),
+        )
+        return await MatchCardRenderer().render(card_data)
 
     async def fetch_match(self) -> Optional[dict[str, Any]]:
         """

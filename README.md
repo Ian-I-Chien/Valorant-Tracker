@@ -17,7 +17,9 @@ Match and account data come from the
 - Update a checkpoint only after its Discord notification is delivered.
 - Prevent duplicate tracking of the same Valorant account in one server.
 - Import the legacy JSON database once and retain a timestamped backup.
-- Display match result, map, queue, player statistics, rank, HS%, ACS, and KAST.
+- Render a graphical scoreboard with agent and rank icons, match result, map,
+  queue, player statistics, HS%, ACS, KAST, and RR changes.
+- Fall back to the text embed if the graphical scoreboard cannot be rendered.
 
 ## Requirements
 
@@ -67,6 +69,7 @@ the notification channel, the bot needs these permissions:
 - View Channel
 - Send Messages
 - Embed Links
+- Attach Files
 
 After the bot joins a new Discord server, an administrator must configure the
 notification channel before anyone can register an account:
@@ -111,7 +114,13 @@ boundaries, migration behavior, and Raspberry Pi considerations.
 
 ## Match Notification
 
-The Discord embed includes:
+The bot renders a scoreboard PNG and uploads it to Discord. Valorant map,
+agent, and rank assets are downloaded on first use and cached under
+`data/assets/`; the cache is ignored by Git. If an individual asset cannot be
+loaded, the card is still rendered without that icon. If rendering the card
+fails, the bot sends the original text embed instead.
+
+The notification includes:
 
 | Field | Description |
 | --- | --- |
@@ -157,6 +166,15 @@ python -m tools.match_output \
 Manual embeds are marked as developer tests and never advance a subscription's
 `last_polled_match_id`.
 
+To render a real match locally for visual review without sending it:
+
+```bash
+python -m tools.render_match_card \
+  --account "Name#Tag" \
+  --match-id "MATCH_ID" \
+  --output match-scoreboard.png
+```
+
 The main modules are:
 
 ```text
@@ -166,6 +184,7 @@ database/storage_sqlite.py   SQLite schema, repositories, and JSON migration
 valorant/api.py              HenrikDev HTTP client and rate limiter
 valorant/player.py           Account and rank lookups
 valorant/match.py            Match lookup, statistics, and embed formatting
+valorant/match_card.py       Cached assets and graphical scoreboard rendering
 designs/database.md          Persistence design and operational notes
 ```
 
