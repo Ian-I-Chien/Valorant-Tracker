@@ -8,10 +8,13 @@ from utils import parse_player_name
 from discord.ext import commands, tasks
 from database.storage_sqlite import migrate_legacy_json
 from commands import (
+    get_notification_channel_id,
     handle_polling_matches,
     mark_match_delivered,
     delete_valorant_account,
     registered_with_valorant_account,
+    set_notification_channel,
+    show_server_config,
 )
 
 load_dotenv()
@@ -55,19 +58,21 @@ async def polling_matches():
             LOGGER.debug("No new match found")
             return
 
-        target_channels = []
-
-        if polling_result.dc_channel_id:
-            ch = bot.get_channel(int(polling_result.dc_channel_id))
-            if ch:
-                target_channels.append(ch)
-
-        if not target_channels:
-            LOGGER.warning("No valid channel found for match notification")
+        channel_id = await get_notification_channel_id(polling_result.server_id)
+        if channel_id is None:
+            LOGGER.warning(
+                "Server %s has no notification channel", polling_result.server_id
+            )
             return
 
-        for ch in target_channels:
-            await ch.send(embed=polling_result.embed)
+        channel = bot.get_channel(int(channel_id))
+        if channel is None:
+            channel = await bot.fetch_channel(int(channel_id))
+        if not hasattr(channel, "send"):
+            LOGGER.warning("Configured channel %s cannot receive messages", channel_id)
+            return
+
+        await channel.send(embed=polling_result.embed)
 
         if not await mark_match_delivered(polling_result):
             LOGGER.warning(
@@ -107,6 +112,19 @@ async def reg_val(interaction: discord.Interaction, valorant_account: str):
 @bot.tree.command(name="del_val", description="Delete Valorant User")
 async def del_val(interaction: discord.Interaction, valorant_account: str):
     await delete_valorant_account(interaction, valorant_account)
+
+
+@bot.tree.command(name="set_channel", description="Set the match notification channel")
+@app_commands.default_permissions(manage_guild=True)
+@app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.describe(channel="Channel used for Valorant match notifications")
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    await set_notification_channel(interaction, channel)
+
+
+@bot.tree.command(name="show_config", description="Show this server's bot settings")
+async def show_config(interaction: discord.Interaction):
+    await show_server_config(interaction)
 
 
 def run_bot():
