@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - '**'
   pull_request:
     branches:
       - main
@@ -21,32 +20,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Free disk space
-        run: |
-          df -h
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/hostedtoolcache
-          df -h
+          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install --no-cache-dir -r requirements.txt
 
-      - name: Check Python script for errors
-        run: |
-          timeout 120 python3 main.py || (echo "Timeout occurred, but treated as success"; exit 0)
-          if [ $? -ne 0 ]; then
-            echo "An error occurred, marking as failure."
-            exit 1
-          fi
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          API_TOKEN: ${{ secrets.API_TOKEN }}
-
       - name: Run Black to check code style
-        run: |
-          black --check .
+        run: black --check .
+
+      - name: Compile Python modules
+        run: python -m compileall -q .
+
+      - name: Run tests
+        run: python -m pytest -q
