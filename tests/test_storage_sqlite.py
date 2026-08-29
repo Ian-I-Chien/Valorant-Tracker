@@ -24,21 +24,19 @@ def test_register_checkpoint_and_owner_scoped_delete(tmp_path):
                 "user-2", "two", "Two", "server-2", "channel-2", "Ace#AP", "p1"
             )
         async with UserSQLiteDB(database_file) as repository:
-            rows = await repository.get_all()
-            first = rows[0]["valorant_accounts"][0]
-            assert await repository.update_last_polled_match(
-                first["subscription_id"], None, "match-1"
-            )
+            subscriptions = await repository.list_subscriptions()
+            first = subscriptions[0]
+            assert await repository.update_last_polled_match(first.id, None, "match-1")
             assert not await repository.update_last_polled_match(
-                first["subscription_id"], None, "stale-match"
+                first.id, None, "stale-match"
             )
             assert await repository.remove_valorant_account(
                 "user-1", "server-1", "ace#ap"
             )
         async with UserSQLiteDB(database_file) as repository:
-            remaining = await repository.get_all()
+            remaining = await repository.list_subscriptions()
             assert len(remaining) == 1
-            assert remaining[0]["dc_id"] == "user-2"
+            assert remaining[0].discord_user_id == "user-2"
 
     run(scenario())
 
@@ -76,10 +74,10 @@ def test_legacy_migration_is_idempotent_and_keeps_source(tmp_path):
 
     async def read_rows():
         async with UserSQLiteDB(database_file) as repository:
-            return await repository.get_all()
+            return await repository.list_subscriptions()
 
-    rows = run(read_rows())
-    assert rows[0]["valorant_accounts"][0]["last_polled_match_id"] == "match-1"
+    subscriptions = run(read_rows())
+    assert subscriptions[0].last_polled_match_id == "match-1"
 
 
 def test_duplicate_subscription_rolls_back_entire_registration(tmp_path):

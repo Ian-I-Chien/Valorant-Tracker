@@ -76,6 +76,17 @@ class MigrationResult:
     backup_path: Optional[Path] = None
 
 
+@dataclass(frozen=True)
+class SubscriptionRecord:
+    id: int
+    server_id: str
+    discord_user_id: str
+    channel_id: str
+    valorant_account: str
+    valorant_puuid: str
+    last_polled_match_id: Optional[str]
+
+
 class DuplicateSubscriptionError(ValueError):
     """Raised when the same account is already tracked in a server channel."""
 
@@ -174,7 +185,7 @@ class UserSQLiteDB:
         finally:
             await connection.execute("RELEASE register_subscription")
 
-    async def get_all(self):
+    async def list_subscriptions(self) -> list[SubscriptionRecord]:
         cursor = await self._connection().execute(
             """
             SELECT s.id AS subscription_id, s.server_id AS dc_server_id,
@@ -188,19 +199,15 @@ class UserSQLiteDB:
         )
         rows = await cursor.fetchall()
         return [
-            {
-                "dc_id": row["dc_id"],
-                "dc_server_id": row["dc_server_id"],
-                "dc_channel_id": row["dc_channel_id"],
-                "valorant_accounts": [
-                    {
-                        "subscription_id": row["subscription_id"],
-                        "valorant_account": row["valorant_account"],
-                        "valorant_puuid": row["valorant_puuid"],
-                        "last_polled_match_id": row["last_polled_match_id"],
-                    }
-                ],
-            }
+            SubscriptionRecord(
+                id=row["subscription_id"],
+                server_id=row["dc_server_id"],
+                discord_user_id=row["dc_id"],
+                channel_id=row["dc_channel_id"],
+                valorant_account=row["valorant_account"],
+                valorant_puuid=row["valorant_puuid"],
+                last_polled_match_id=row["last_polled_match_id"],
+            )
             for row in rows
         ]
 
