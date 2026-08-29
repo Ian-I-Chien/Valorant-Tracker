@@ -147,6 +147,21 @@ class UserJsonDB(BaseJsonDB):
         """
         return list(self.data["users"].values())
 
+    async def update_last_polled_match(
+        self, dc_id: str, valorant_puuid: str, match_id: str
+    ) -> bool:
+        """Checkpoint a delivered match for one specific registration."""
+        user = self.data["users"].get(dc_id)
+        if user is None:
+            return False
+
+        for account in user.get("valorant_accounts", []):
+            if account.get("valorant_puuid") == valorant_puuid:
+                account["last_polled_match_id"] = match_id
+                return True
+
+        return False
+
     async def remove_valorant_account(self, valorant_account: str) -> bool:
         """
         Remove a Valorant account from all users.

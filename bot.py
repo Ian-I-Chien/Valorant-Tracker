@@ -7,6 +7,7 @@ from utils import parse_player_name
 from discord.ext import commands, tasks
 from commands import (
     handle_polling_matches,
+    mark_match_delivered,
     delete_valorant_account,
     registered_with_valorant_account,
 )
@@ -36,10 +37,10 @@ async def polling_matches():
     print("Start Polling 30 secs...")
 
     try:
-        polling_info, dc_channel_id = await handle_polling_matches()
+        polling_result = await handle_polling_matches()
 
-        if not polling_info:
-            print("[INFO] No polling_info returned.")
+        if not polling_result:
+            print("[INFO] No polling result returned.")
             return
 
         target_channels = []
@@ -49,8 +50,8 @@ async def polling_matches():
                 ch = bot.get_channel(int(cid))
                 if ch:
                     target_channels.append(ch)
-        elif dc_channel_id:
-            ch = bot.get_channel(int(dc_channel_id))
+        elif polling_result.dc_channel_id:
+            ch = bot.get_channel(int(polling_result.dc_channel_id))
             if ch:
                 target_channels.append(ch)
 
@@ -59,7 +60,13 @@ async def polling_matches():
             return
 
         for ch in target_channels:
-            await ch.send(embed=polling_info)
+            await ch.send(embed=polling_result.embed)
+
+        if not await mark_match_delivered(polling_result):
+            print(
+                f"[WARN] Match {polling_result.match_id} was delivered but "
+                "its registration no longer exists."
+            )
 
     except Exception as e:
         print(f"[ERROR] polling_matches: {e}")

@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 from typing import Optional
 
 import discord
@@ -12,6 +13,15 @@ import traceback
 # This ensures polling, registration, and deletion
 # do not read/write the JSON storage at the same time.
 _userdb_lock: Optional[asyncio.Lock] = None
+
+
+@dataclass(frozen=True)
+class PollingMatchResult:
+    embed: discord.Embed
+    dc_channel_id: Optional[str]
+    dc_id: str
+    valorant_puuid: str
+    match_id: str
 
 
 def get_userdb_lock() -> asyncio.Lock:
@@ -34,8 +44,8 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
     - Load all registered users from JSON
     - For each Valorant account, fetch the last match ID from API
     - Compare with last_polled_match_id stored in JSON
-    - If it is a new match, fetch match data and update last_polled_match_id
-    - Return (formatted match result, discord_channel_id) when a new match is found
+    - If it is a new match, fetch and format the match data
+    - Return delivery metadata without updating last_polled_match_id
     """
     lock = get_userdb_lock()
 
@@ -55,6 +65,7 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             account_str = account_data["valorant_account"]
                             player_name, player_tag = account_str.split("#")
                             valorant_puuid = account_data["valorant_puuid"]
+                            dc_id = user_data["dc_id"]
                             dc_channel_id = user_data.get("dc_channel_id")
 
                             # Read the last processed match ID for this account
@@ -84,17 +95,17 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             match_data = await match.get_stored_match_by_id_by_api()
                             match.last_match_data = match_data
 
-                            # Mark this match as processed for this account
-                            account_data["last_polled_match_id"] = last_match_id
-
                             print(
-                                f"[DEBUG] Processed new match {last_match_id} for {account_str}"
+                                f"[DEBUG] Prepared new match {last_match_id} for {account_str}"
                             )
 
-                            # Return formatted match info and target channel ID
-                            return (
-                                await match.sorted_formatted_player(),
-                                dc_channel_id,
+                            # Delivery must succeed before this match is checkpointed.
+                            return PollingMatchResult(
+                                embed=await match.sorted_formatted_player(),
+                                dc_channel_id=dc_channel_id,
+                                dc_id=dc_id,
+                                valorant_puuid=valorant_puuid,
+                                match_id=last_match_id,
                             )
 
                         except Exception as e:
@@ -108,7 +119,19 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
             traceback.print_exc()
 
         # No new matches found
-        return None, None
+        return None
+
+
+async def mark_match_delivered(result: PollingMatchResult) -> bool:
+    """Persist a match checkpoint only after Discord delivery succeeds."""
+    lock = get_userdb_lock()
+    async with lock:
+        async with UserJsonDB() as user_model:
+            return await user_model.update_last_polled_match(
+                dc_id=result.dc_id,
+                valorant_puuid=result.valorant_puuid,
+                match_id=result.match_id,
+            )
 
 
 async def delete_valorant_account(
