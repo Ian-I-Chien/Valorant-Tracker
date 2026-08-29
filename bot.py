@@ -1,5 +1,6 @@
 import os
-import sys
+import logging
+
 import discord
 from dotenv import load_dotenv
 from discord import app_commands
@@ -14,38 +15,44 @@ from commands import (
 )
 
 load_dotenv()
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+LOGGER = logging.getLogger(__name__)
 
 TOKEN = os.getenv("BOT_TOKEN")
-if not TOKEN:
-    print("[ERROR] Need to set TOKEN in env.")
-    sys.exit(1)
 
 intents = discord.Intents.default()
 intents.message_content = True
 
-bot = commands.Bot(command_prefix="/", intents=intents)
+
+class ValorantTrackerBot(commands.Bot):
+    async def setup_hook(self) -> None:
+        migration = await migrate_legacy_json()
+        if migration.backup_path:
+            LOGGER.info(
+                "Migrated legacy JSON: imported=%s, skipped=%s, "
+                "invalid=%s, backup=%s",
+                migration.imported,
+                migration.skipped,
+                migration.invalid,
+                migration.backup_path,
+            )
 
 
-@bot.event
-async def setup_hook():
-    migration = await migrate_legacy_json()
-    if migration.backup_path:
-        print(
-            "[INFO] Migrated legacy JSON: "
-            f"imported={migration.imported}, skipped={migration.skipped}, "
-            f"invalid={migration.invalid}, backup={migration.backup_path}"
-        )
+bot = ValorantTrackerBot(command_prefix="/", intents=intents)
 
 
 @tasks.loop(seconds=30)
 async def polling_matches():
-    print("Start Polling 30 secs...")
+    LOGGER.debug("Polling for completed matches")
 
     try:
         polling_result = await handle_polling_matches()
 
         if not polling_result:
-            print("[INFO] No polling result returned.")
+            LOGGER.debug("No new match found")
             return
 
         target_channels = []
@@ -56,34 +63,33 @@ async def polling_matches():
                 target_channels.append(ch)
 
         if not target_channels:
-            print("[WARN] No valid channels found to send message.")
+            LOGGER.warning("No valid channel found for match notification")
             return
 
         for ch in target_channels:
             await ch.send(embed=polling_result.embed)
 
         if not await mark_match_delivered(polling_result):
-            print(
-                f"[WARN] Match {polling_result.match_id} was delivered but "
-                "its registration no longer exists."
+            LOGGER.warning(
+                "Match %s was delivered but its subscription changed",
+                polling_result.match_id,
             )
 
-    except Exception as e:
-        print(f"[ERROR] polling_matches: {e}")
+    except Exception:
+        LOGGER.exception("Unexpected error while polling matches")
 
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
+    LOGGER.info("Logged in as %s", bot.user)
     try:
         await bot.tree.sync()
-        print("Slash commands synced successfully.")
-    except Exception as e:
-        print(f"Error syncing commands: {e}")
+        LOGGER.info("Slash commands synced successfully")
+    except Exception:
+        LOGGER.exception("Could not sync slash commands")
 
-    print("Registered commands:")
     for command in bot.tree.get_commands():
-        print(f"- {command.name}")
+        LOGGER.debug("Registered command: %s", command.name)
 
     await bot.change_presence(activity=discord.Game("Tracking your Valorant matches"))
     if not polling_matches.is_running():
@@ -104,4 +110,6 @@ async def del_val(interaction: discord.Interaction, valorant_account: str):
 
 
 def run_bot():
+    if not TOKEN:
+        raise RuntimeError("BOT_TOKEN must be set")
     bot.run(TOKEN)
