@@ -1,5 +1,6 @@
 import os
 import logging
+import io
 
 import discord
 from dotenv import load_dotenv
@@ -72,7 +73,16 @@ async def polling_matches():
             LOGGER.warning("Configured channel %s cannot receive messages", channel_id)
             return
 
-        await channel.send(embed=polling_result.embed)
+        if polling_result.image is not None:
+            filename = "match-scoreboard.png"
+            image_embed = discord.Embed(color=discord.Color.from_str("#ff4655"))
+            image_embed.set_image(url=f"attachment://{filename}")
+            await channel.send(
+                embed=image_embed,
+                file=discord.File(io.BytesIO(polling_result.image), filename=filename),
+            )
+        else:
+            await channel.send(embed=polling_result.embed)
 
         if not await mark_match_delivered(polling_result):
             LOGGER.warning(

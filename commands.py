@@ -17,7 +17,8 @@ _userdb_lock: Optional[asyncio.Lock] = None
 
 @dataclass(frozen=True)
 class PollingMatchResult:
-    embed: discord.Embed
+    embed: Optional[discord.Embed]
+    image: Optional[bytes]
     server_id: str
     dc_id: str
     valorant_puuid: str
@@ -125,9 +126,23 @@ async def handle_polling_matches(
                             account_str,
                         )
 
+                        # Prefer the graphical card. If rendering or a remote asset
+                        # fails, preserve delivery by falling back to the text embed.
+                        try:
+                            image = await match.build_match_card()
+                            embed = None
+                        except Exception:
+                            LOGGER.exception(
+                                "Could not render match card %s; using text fallback",
+                                last_match_id,
+                            )
+                            image = None
+                            embed = await match.build_embed()
+
                         # Delivery must succeed before this match is checkpointed.
                         return PollingMatchResult(
-                            embed=await match.build_embed(),
+                            embed=embed,
+                            image=image,
                             server_id=subscription.server_id,
                             dc_id=dc_id,
                             valorant_puuid=valorant_puuid,
