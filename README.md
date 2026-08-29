@@ -1,8 +1,8 @@
 # Valorant Tracker Bot
 
 A lightweight Discord bot that tracks registered Valorant accounts and posts
-an embed when a new match is completed. It is designed to run as a single
-process on a Raspberry Pi and uses SQLite for local persistence.
+a graphical scoreboard when a new match is completed. It is designed to run as
+a single process on a Raspberry Pi and uses SQLite for local persistence.
 
 Match and account data come from the
 [HenrikDev unofficial Valorant API](https://github.com/Henrik-3/unofficial-valorant-api).
@@ -19,7 +19,13 @@ Match and account data come from the
 - Import the legacy JSON database once and retain a timestamped backup.
 - Render a graphical scoreboard with agent and rank icons, match result, map,
   queue, player statistics, HS%, ACS, KAST, and RR changes.
+- Highlight registered players and label premade DUO, TRIO, and stack groups
+  without exposing HenrikDev party IDs.
+- Generate an explainable pre-match prediction card from a registered player's
+  recent Competitive and Unrated matches.
 - Fall back to the text embed if the graphical scoreboard cannot be rendered.
+- Emit operational information and errors through Python logging, suitable for
+  systemd journal monitoring on a Raspberry Pi.
 
 ## Requirements
 
@@ -89,9 +95,16 @@ subscriptions in that server immediately and does not require a bot restart.
 | `/show_config` | Everyone | Show the notification channel for the current server. |
 | `/reg_val valorant_account:name#tag` | Everyone | Register and begin tracking a Valorant account. |
 | `/del_val valorant_account:name#tag` | Account owner | Stop tracking one of the caller's accounts in this server. |
+| `/predict username:name` | Everyone | Generate an entertainment-only pre-match prediction for a registered player. |
 
 If `/reg_val` is used before `/set_channel`, registration is rejected with an
 instruction to contact a server administrator.
+
+`/predict` accepts either an unambiguous registered game name or a complete
+`name#tag`. It only considers Competitive (RK) and Unrated (NG) matches from the
+previous 30 days; Swiftplay, Deathmatch, Team Deathmatch, Spike Rush, and other
+modes are excluded. If the player has no eligible match in that period, the bot
+reports that there is not enough recent data instead of producing a prediction.
 
 ## Persistence
 
@@ -133,8 +146,21 @@ The notification includes:
 | ACS | Average Combat Score |
 | KAST | Percentage of rounds with a kill, assist, survival, or trade |
 | Rank | Competitive rank when available |
+| Party | Team-local DUO, TRIO, or stack label for shared party IDs |
 
-<img src="pic/output_example.png" alt="Discord match notification example" width="360">
+<img src="pic/output_example.png" alt="Graphical Discord match notification with party labels" width="780">
+
+## Pre-Match Prediction
+
+The prediction card is an explainable entertainment baseline, not an LLM and
+not a guaranteed outcome. It uses eligible recent win rate, ACS, K/D, and ACS
+trend, then bounds the displayed probability between 25% and 75%. The card also
+shows the sample size, confidence level, recent form, and the strongest reasons
+behind the estimate. If image rendering fails, the command returns the same
+result as text.
+
+HenrikDev currently returns at most ten recent matches to this workflow, so the
+30-day filter can only evaluate the eligible matches present in that response.
 
 ## Development
 
@@ -145,8 +171,8 @@ python -m pytest -q
 python -m black --check .
 ```
 
-Developers with shell access can build the latest match embed without sending
-it or changing the polling checkpoint:
+Developers with shell access can build the latest graphical match card without
+sending it or changing the polling checkpoint:
 
 ```bash
 python -m tools.match_output --account "Name#Tag"
@@ -163,7 +189,7 @@ python -m tools.match_output \
   --send
 ```
 
-Manual embeds are marked as developer tests and never advance a subscription's
+Manual outputs are marked as developer tests and never advance a subscription's
 `last_polled_match_id`.
 
 To render a real match locally for visual review without sending it:
@@ -185,7 +211,16 @@ valorant/api.py              HenrikDev HTTP client and rate limiter
 valorant/player.py           Account and rank lookups
 valorant/match.py            Match lookup, statistics, and embed formatting
 valorant/match_card.py       Cached assets and graphical scoreboard rendering
+valorant/prediction.py       Prediction features, baseline, and card rendering
 designs/database.md          Persistence design and operational notes
+```
+
+Pull requests run Black and pytest through `.github/workflows/ci.yaml`.
+
+For a systemd deployment, inspect live bot logs with:
+
+```bash
+journalctl -u valorant-tracker.service -f
 ```
 
 ## Contact
