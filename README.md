@@ -58,10 +58,16 @@ Create `.env` in the repository root:
 BOT_TOKEN=your_discord_bot_token
 API_KEY=your_henrikdev_api_key
 LOG_LEVEL=INFO
+API_REQUESTS_PER_MINUTE=60
+API_CACHE_MAX_ENTRIES=256
 ```
 
 Do not commit `.env`. Discord server notification channels are configured with
 commands and stored in SQLite; they do not belong in environment variables.
+
+`API_REQUESTS_PER_MINUTE` defaults to 60 to retain headroom below a 90-request
+HenrikDev key. `API_CACHE_MAX_ENTRIES` bounds the in-memory response cache for
+Raspberry Pi deployments.
 
 Start the bot:
 
@@ -124,6 +130,11 @@ database/valorant_tracker.db
 
 SQLite WAL and shared-memory files may appear beside it while the bot runs. All
 of these files are ignored by Git.
+
+HenrikDev match lists, rank data, and MMR history use short in-memory TTLs.
+Concurrent requests for the same resource share one upstream request, and a
+recent stale response is used when HenrikDev is temporarily unavailable. The
+poller uses a 60-second match-list TTL; interactive statistics use five minutes.
 
 At startup, an existing `database/valorant_data.json` is imported once. The
 source is retained, a timestamped backup is created, and the import is recorded

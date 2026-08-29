@@ -7,8 +7,8 @@ from valorant.player import ValorantPlayer
 def test_fetch_account_forces_refresh_and_keeps_canonical_riot_id(monkeypatch):
     requests = []
 
-    async def fake_fetch_json(url, params=None):
-        requests.append((url, params))
+    async def fake_fetch_json(url, params=None, **kwargs):
+        requests.append((url, params, kwargs))
         if params == {"force": "true"}:
             return {
                 "data": {
@@ -27,6 +27,7 @@ def test_fetch_account_forces_refresh_and_keeps_canonical_riot_id(monkeypatch):
     assert len(requests) == 2
     assert "/Rchu/1103" in requests[0][0]
     assert requests[0][1] is None
+    assert requests[0][2] == {"cache_ttl": 300}
     assert "/Rchu/1103" in requests[1][0]
     assert requests[1][1] == {"force": "true"}
     assert account["puuid"] == "player-puuid"
@@ -36,8 +37,8 @@ def test_fetch_account_forces_refresh_and_keeps_canonical_riot_id(monkeypatch):
 def test_fetch_account_returns_none_after_refresh_also_fails(monkeypatch):
     requests = []
 
-    async def fake_fetch_json(url, params=None):
-        requests.append((url, params))
+    async def fake_fetch_json(url, params=None, **kwargs):
+        requests.append((url, params, kwargs))
         return None
 
     monkeypatch.setattr(player_module, "fetch_json", fake_fetch_json)

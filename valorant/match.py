@@ -468,12 +468,14 @@ class Match:
         Fetch full match data using the stored last_match_id.
         """
         url = API_URLS["match"].format(region=self.region, matchid=self.last_match_id)
-        self.last_match_data = await fetch_json(url)
+        self.last_match_data = await fetch_json(url, cache_ttl=86400, stale_ttl=604800)
         if not self.last_match_data:
             return None
         return self.last_match_data
 
-    async def fetch_recent_matches(self, size: int = 5) -> Optional[dict[str, Any]]:
+    async def fetch_recent_matches(
+        self, size: int = 5, cache_ttl: float = 300
+    ) -> Optional[dict[str, Any]]:
         """
         Fetch recent matches for the player from Henrikdev API (v3).
         """
@@ -482,7 +484,11 @@ class Match:
             player_name=self.player_name,
             player_tag=self.player_tag,
         )
-        matches_data = await fetch_json(url, params={"size": max(1, min(size, 20))})
+        matches_data = await fetch_json(
+            url,
+            params={"size": max(1, min(size, 20))},
+            cache_ttl=cache_ttl,
+        )
         if not matches_data:
             return None
         return matches_data
@@ -491,7 +497,7 @@ class Match:
         """
         Fetch and store the latest match ID for this player.
         """
-        matches_data = await self.fetch_recent_matches()
+        matches_data = await self.fetch_recent_matches(cache_ttl=60)
         if not matches_data:
             return None
 
