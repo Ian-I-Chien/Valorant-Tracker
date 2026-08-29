@@ -84,7 +84,16 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             # matches completed before registration are not sent
                             # as new notifications.
                             if last_polled_match_id is None:
-                                account_data["last_polled_match_id"] = last_match_id
+                                initialized = await user_model.update_last_polled_match(
+                                    subscription_id=account_data["subscription_id"],
+                                    expected_match_id=None,
+                                    match_id=last_match_id,
+                                )
+                                if not initialized:
+                                    print(
+                                        f"[WARN] Could not initialize checkpoint for "
+                                        f"{account_str}; subscription changed."
+                                    )
                                 print(
                                     f"[DEBUG] Initialized match checkpoint {last_match_id} "
                                     f"for {account_str}, skipping existing match."
