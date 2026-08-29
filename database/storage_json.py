@@ -176,9 +176,7 @@ class UserJsonDB(BaseJsonDB):
 
         return False
 
-    async def remove_valorant_account(
-        self, dc_id: str, valorant_account: str
-    ) -> bool:
+    async def remove_valorant_account(self, dc_id: str, valorant_account: str) -> bool:
         """
         Remove a Valorant account belonging to one Discord user.
         Returns True if the account was removed.
