@@ -256,6 +256,47 @@ class UserSQLiteDB:
             for row in rows
         ]
 
+    async def find_subscription(
+        self, server_id: str, account_query: str
+    ) -> Optional[SubscriptionRecord]:
+        """Find a registered Riot ID by full ID or an unambiguous game name."""
+        query = account_query.strip()
+        if not query:
+            return None
+        if "#" in query:
+            game_name, tag = query.rsplit("#", 1)
+            condition = "a.game_name = ? COLLATE NOCASE AND a.tag = ? COLLATE NOCASE"
+            parameters = (server_id, game_name, tag)
+        else:
+            condition = "a.game_name = ? COLLATE NOCASE"
+            parameters = (server_id, query)
+        cursor = await self._connection().execute(
+            f"""
+            SELECT s.id AS subscription_id, s.server_id AS dc_server_id,
+                   s.discord_user_id AS dc_id, s.last_polled_match_id,
+                   a.puuid AS valorant_puuid,
+                   a.game_name || '#' || a.tag AS valorant_account
+            FROM subscriptions AS s
+            JOIN valorant_accounts AS a ON a.puuid = s.valorant_puuid
+            WHERE s.server_id = ? AND {condition}
+            ORDER BY s.id
+            LIMIT 2
+            """,
+            parameters,
+        )
+        rows = await cursor.fetchall()
+        if len(rows) != 1:
+            return None
+        row = rows[0]
+        return SubscriptionRecord(
+            id=row["subscription_id"],
+            server_id=row["dc_server_id"],
+            discord_user_id=row["dc_id"],
+            valorant_account=row["valorant_account"],
+            valorant_puuid=row["valorant_puuid"],
+            last_polled_match_id=row["last_polled_match_id"],
+        )
+
     async def set_guild_notification_channel(
         self, server_id: str, channel_id: str
     ) -> GuildSettingsRecord:

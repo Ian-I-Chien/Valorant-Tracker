@@ -16,6 +16,7 @@ from commands import (
     registered_with_valorant_account,
     set_notification_channel,
     show_server_config,
+    predict_registered_player,
 )
 
 load_dotenv()
@@ -135,6 +136,14 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
 @bot.tree.command(name="show_config", description="Show this server's bot settings")
 async def show_config(interaction: discord.Interaction):
     await show_server_config(interaction)
+
+
+@bot.tree.command(
+    name="predict", description="Predict a registered player's next match"
+)
+@app_commands.describe(username="Registered Valorant username or name#tag")
+async def predict(interaction: discord.Interaction, username: str):
+    await predict_registered_player(interaction, username)
 
 
 def run_bot():
