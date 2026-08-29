@@ -23,6 +23,8 @@ Match and account data come from the
   without exposing HenrikDev party IDs.
 - Generate an explainable pre-match prediction card from a registered player's
   recent Competitive and Unrated matches.
+- Render a 30-day player overview with rank and agent icons, core performance
+  metrics, recent form, party results, and an RR trend chart.
 - Fall back to the text embed if the graphical scoreboard cannot be rendered.
 - Emit operational information and errors through Python logging, suitable for
   systemd journal monitoring on a Raspberry Pi.
@@ -96,6 +98,7 @@ subscriptions in that server immediately and does not require a bot restart.
 | `/reg_val valorant_account:name#tag` | Everyone | Register and begin tracking a Valorant account. |
 | `/del_val valorant_account:name#tag` | Account owner | Stop tracking one of the caller's accounts in this server. |
 | `/predict username:name` | Everyone | Generate an entertainment-only pre-match prediction for a registered player. |
+| `/info username:name` | Everyone | Show a graphical 30-day overview for a registered player. |
 
 If `/reg_val` is used before `/set_channel`, registration is rejected with an
 instruction to contact a server administrator.
@@ -105,6 +108,11 @@ instruction to contact a server administrator.
 previous 30 days; Swiftplay, Deathmatch, Team Deathmatch, Spike Rush, and other
 modes are excluded. If the player has no eligible match in that period, the bot
 reports that there is not enough recent data instead of producing a prediction.
+
+`/info` uses the same registered-player lookup and 30-day RK/NG filter. Its
+dashboard includes win rate, match count, K/D, KDA, ACS, KAST, HS%, ADR, recent
+form, top agents, party-size performance, current rank/RR, and recent RR
+changes. If card rendering fails, the command returns a compact text summary.
 
 ## Persistence
 
@@ -164,6 +172,14 @@ HenrikDev currently returns at most ten recent matches to this workflow, so the
 
 <img src="pic/prediction_example.png" alt="Pre-match prediction card example" width="600">
 
+## Player Overview
+
+The `/info` dashboard combines recent match data with rank history. Agent and
+rank artwork are downloaded through the shared asset cache; missing remote
+artwork does not prevent the rest of the card from rendering. Only Competitive
+and Unrated matches completed in the previous 30 days contribute to the
+performance metrics.
+
 ## Development
 
 Install the requirements, then run:
@@ -214,6 +230,7 @@ valorant/player.py           Account and rank lookups
 valorant/match.py            Match lookup, statistics, and embed formatting
 valorant/match_card.py       Cached assets and graphical scoreboard rendering
 valorant/prediction.py       Prediction features, baseline, and card rendering
+valorant/player_info.py      Player overview aggregation and card rendering
 designs/database.md          Persistence design and operational notes
 ```
 

@@ -8,6 +8,7 @@ import discord
 from database.storage_sqlite import UserSQLiteDB
 from valorant.match import Match
 from valorant.player import ValorantPlayer
+from valorant.player_info import PlayerInfoCardRenderer, build_player_info
 from valorant.prediction import (
     PredictionCardRenderer,
     extract_recent_performances,
@@ -231,6 +232,58 @@ async def predict_registered_player(
                 f"**{result.riot_id} — next match prediction**\n"
                 f"Win chance: **{result.win_probability}%** ({result.confidence.lower()} confidence)\n"
                 f"Based on {result.match_count} matches in the last 30 days."
+            )
+        )
+
+
+async def show_registered_player_info(
+    interaction: discord.Interaction, account_query: str
+) -> None:
+    """Render recent NG/RK statistics for a player registered in this server."""
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+    await interaction.response.defer()
+    async with UserSQLiteDB() as repository:
+        subscription = await repository.find_subscription(
+            str(interaction.guild.id), account_query
+        )
+    if subscription is None:
+        await interaction.edit_original_response(
+            content="No unique registered player matched that username. Try name#tag."
+        )
+        return
+    name, tag = subscription.valorant_account.rsplit("#", 1)
+    player = ValorantPlayer(name, tag)
+    matches_payload, rank_history = await asyncio.gather(
+        Match(name, tag).fetch_recent_matches(size=20),
+        player.fetch_rank_history(),
+    )
+    data = build_player_info(
+        subscription.valorant_account,
+        subscription.valorant_puuid,
+        (matches_payload or {}).get("data") or [],
+        rank_history,
+    )
+    if data is None:
+        await interaction.edit_original_response(
+            content=f"{subscription.valorant_account} has no NG/RK matches in the last 30 days."
+        )
+        return
+    try:
+        image = await PlayerInfoCardRenderer().render(data)
+        await interaction.edit_original_response(
+            attachments=[discord.File(io.BytesIO(image), filename="player-info.png")]
+        )
+    except Exception:
+        LOGGER.exception("Could not render player info card")
+        await interaction.edit_original_response(
+            content=(
+                f"**{data.riot_id} - recent player info**\n"
+                f"{data.matches} matches | {data.win_rate}% WR | "
+                f"{data.kd:.2f} K/D | {data.average_acs} ACS"
             )
         )
 
