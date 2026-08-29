@@ -103,19 +103,22 @@ subscriptions in that server immediately and does not require a bot restart.
 | `/show_config` | Everyone | Show the notification channel for the current server. |
 | `/reg_val valorant_account:name#tag` | Everyone | Register and begin tracking a Valorant account. |
 | `/del_val valorant_account:name#tag` | Account owner | Stop tracking one of the caller's accounts in this server. |
-| `/predict username:name` | Everyone | Generate an entertainment-only pre-match prediction for a registered player. |
-| `/info username:name` | Everyone | Show a graphical 30-day overview for a registered player. |
+| `/predict username:name` | Everyone | Generate an entertainment-only pre-match prediction for a player. |
+| `/info username:name` | Everyone | Show a graphical 30-day overview for a player. |
 
 If `/reg_val` is used before `/set_channel`, registration is rejected with an
 instruction to contact a server administrator.
 
-`/predict` accepts either an unambiguous registered game name or a complete
-`name#tag`. It only considers Competitive (RK) and Unrated (NG) matches from the
+`/predict` and `/info` accept either an unambiguous registered game name or a
+complete `name#tag`. A complete Riot ID can be queried even when the player is
+not registered; this one-time lookup does not subscribe the player, create a
+polling checkpoint, or track future matches. They only consider Competitive
+(RK) and Unrated (NG) matches from the
 previous 30 days; Swiftplay, Deathmatch, Team Deathmatch, Spike Rush, and other
 modes are excluded. If the player has no eligible match in that period, the bot
 reports that there is not enough recent data instead of producing a prediction.
 
-`/info` uses the same registered-player lookup and 30-day RK/NG filter. Its
+`/info` uses the same player lookup and 30-day RK/NG filter. Its
 dashboard includes win rate, match count, K/D, KDA, ACS, KAST, HS%, ADR, recent
 form, top agents, party-size performance, current rank/RR, and recent RR
 changes. If card rendering fails, the command returns a compact text summary.

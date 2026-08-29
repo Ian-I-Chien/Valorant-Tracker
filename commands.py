@@ -34,6 +34,45 @@ class PollingMatchResult:
     previous_match_id: Optional[str]
 
 
+@dataclass(frozen=True)
+class ResolvedPlayer:
+    riot_id: str
+    puuid: str
+
+
+async def resolve_player_query(
+    server_id: str, account_query: str
+) -> Optional[ResolvedPlayer]:
+    """Resolve a registered player or look up an unregistered full Riot ID.
+
+    This is intentionally read-only: ad-hoc lookups never create a subscription
+    or a polling checkpoint.
+    """
+    query = account_query.strip()
+    async with UserSQLiteDB() as repository:
+        subscription = await repository.find_subscription(server_id, query)
+    if subscription is not None:
+        return ResolvedPlayer(
+            riot_id=subscription.valorant_account,
+            puuid=subscription.valorant_puuid,
+        )
+
+    if "#" not in query:
+        return None
+    name, tag = (part.strip() for part in query.rsplit("#", 1))
+    if not name or not tag:
+        return None
+
+    player = ValorantPlayer(name, tag)
+    account = await player.fetch_account()
+    if not account or not account.get("puuid"):
+        return None
+    return ResolvedPlayer(
+        riot_id=f"{player.player_name}#{player.player_tag}",
+        puuid=str(account["puuid"]),
+    )
+
+
 def get_userdb_lock() -> asyncio.Lock:
     """
     Lazily initialize and return the global user DB lock.
@@ -192,30 +231,28 @@ async def get_notification_channel_id(server_id: str) -> Optional[str]:
 async def predict_registered_player(
     interaction: discord.Interaction, account_query: str
 ) -> None:
-    """Create a pre-match prediction for a player registered in this server."""
+    """Create a pre-match prediction for a registered or ad-hoc player."""
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command can only be used in a Discord server.", ephemeral=True
         )
         return
     await interaction.response.defer()
-    async with UserSQLiteDB() as repository:
-        subscription = await repository.find_subscription(
-            str(interaction.guild.id), account_query
-        )
-    if subscription is None:
+    player = await resolve_player_query(str(interaction.guild.id), account_query)
+    if player is None:
         await interaction.edit_original_response(
-            content="No unique registered player matched that username. Try `name#tag`."
+            content="No unique registered player matched that username. "
+            "For an unregistered player, use the complete `name#tag`."
         )
         return
-    player_name, player_tag = subscription.valorant_account.rsplit("#", 1)
+    player_name, player_tag = player.riot_id.rsplit("#", 1)
     matches_payload = await Match(player_name, player_tag).fetch_recent_matches(size=20)
     matches = (matches_payload or {}).get("data") or []
-    performances = extract_recent_performances(matches, subscription.valorant_puuid)
-    result = predict_next_match(subscription.valorant_account, performances)
+    performances = extract_recent_performances(matches, player.puuid)
+    result = predict_next_match(player.riot_id, performances)
     if result is None:
         await interaction.edit_original_response(
-            content=f"`{subscription.valorant_account}` has no completed matches in the last 30 days, so there is not enough data to predict."
+            content=f"`{player.riot_id}` has no completed matches in the last 30 days, so there is not enough data to predict."
         )
         return
     try:
@@ -239,37 +276,35 @@ async def predict_registered_player(
 async def show_registered_player_info(
     interaction: discord.Interaction, account_query: str
 ) -> None:
-    """Render recent NG/RK statistics for a player registered in this server."""
+    """Render recent NG/RK statistics for a registered or ad-hoc player."""
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command can only be used in a Discord server.", ephemeral=True
         )
         return
     await interaction.response.defer()
-    async with UserSQLiteDB() as repository:
-        subscription = await repository.find_subscription(
-            str(interaction.guild.id), account_query
-        )
-    if subscription is None:
+    resolved = await resolve_player_query(str(interaction.guild.id), account_query)
+    if resolved is None:
         await interaction.edit_original_response(
-            content="No unique registered player matched that username. Try name#tag."
+            content="No unique registered player matched that username. "
+            "For an unregistered player, use the complete name#tag."
         )
         return
-    name, tag = subscription.valorant_account.rsplit("#", 1)
+    name, tag = resolved.riot_id.rsplit("#", 1)
     player = ValorantPlayer(name, tag)
     matches_payload, rank_history = await asyncio.gather(
         Match(name, tag).fetch_recent_matches(size=20),
         player.fetch_rank_history(),
     )
     data = build_player_info(
-        subscription.valorant_account,
-        subscription.valorant_puuid,
+        resolved.riot_id,
+        resolved.puuid,
         (matches_payload or {}).get("data") or [],
         rank_history,
     )
     if data is None:
         await interaction.edit_original_response(
-            content=f"{subscription.valorant_account} has no NG/RK matches in the last 30 days."
+            content=f"{resolved.riot_id} has no NG/RK matches in the last 30 days."
         )
         return
     try:
