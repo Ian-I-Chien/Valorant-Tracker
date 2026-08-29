@@ -7,21 +7,34 @@ BASE_DIR = os.path.dirname(__file__)
 DATA_FILE = os.path.join(BASE_DIR, "valorant_data.json")
 
 
+class DatabaseLoadError(RuntimeError):
+    """Raised when an existing JSON database cannot be loaded safely."""
+
+
 def _load():
     """
     Load the JSON database file.
-    If the file does not exist or is corrupted,
-    return a default empty data structure.
+    If the file does not exist, return a default empty data structure.
+    Existing but unreadable or invalid files must never be treated as empty.
     """
-    if not os.path.exists(DATA_FILE):
-        return {"users": {}}
-
     try:
         with open(DATA_FILE, "r", encoding="utf8") as f:
-            return json.load(f)
-    except Exception:
-        # File corrupted → return fallback structure
+            data = json.load(f)
+    except FileNotFoundError:
         return {"users": {}}
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise DatabaseLoadError(
+            f"Unable to safely load database file: {DATA_FILE}"
+        ) from exc
+
+    if not isinstance(data, dict):
+        raise DatabaseLoadError("Database root must be a JSON object.")
+
+    users = data.get("users")
+    if users is not None and not isinstance(users, dict):
+        raise DatabaseLoadError("Database 'users' field must be a JSON object.")
+
+    return data
 
 
 def _save(data):
@@ -57,7 +70,8 @@ class BaseJsonDB:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        _save(self.data)
+        if exc_type is None:
+            _save(self.data)
 
 
 class UserJsonDB(BaseJsonDB):
@@ -147,18 +161,38 @@ class UserJsonDB(BaseJsonDB):
         """
         return list(self.data["users"].values())
 
-    async def remove_valorant_account(self, valorant_account: str) -> bool:
+    async def update_last_polled_match(
+        self, dc_id: str, valorant_puuid: str, match_id: str
+    ) -> bool:
+        """Checkpoint a delivered match for one specific registration."""
+        user = self.data["users"].get(dc_id)
+        if user is None:
+            return False
+
+        for account in user.get("valorant_accounts", []):
+            if account.get("valorant_puuid") == valorant_puuid:
+                account["last_polled_match_id"] = match_id
+                return True
+
+        return False
+
+    async def remove_valorant_account(self, dc_id: str, valorant_account: str) -> bool:
         """
-        Remove a Valorant account from all users.
-        Returns True if at least one account was removed.
+        Remove a Valorant account belonging to one Discord user.
+        Returns True if the account was removed.
         """
-        removed = False
-        for user in self.data["users"].values():
-            accounts = user.get("valorant_accounts", [])
-            new_accounts = [
-                a for a in accounts if a["valorant_account"] != valorant_account
-            ]
-            if len(new_accounts) != len(accounts):
-                removed = True
-                user["valorant_accounts"] = new_accounts
-        return removed
+        user = self.data["users"].get(dc_id)
+        if user is None:
+            return False
+
+        accounts = user.get("valorant_accounts", [])
+        new_accounts = [
+            account
+            for account in accounts
+            if account["valorant_account"] != valorant_account
+        ]
+        if len(new_accounts) == len(accounts):
+            return False
+
+        user["valorant_accounts"] = new_accounts
+        return True
