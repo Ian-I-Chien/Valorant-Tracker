@@ -1,4 +1,7 @@
 database/**.json**
+database/*.db
+database/*.db-wal
+database/*.db-shm
 path/
 /*env/*
 __pycache__/

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from discord import app_commands
 from utils import parse_player_name
 from discord.ext import commands, tasks
+from database.storage_sqlite import migrate_legacy_json
 from commands import (
     handle_polling_matches,
     mark_match_delivered,
@@ -15,13 +16,6 @@ from commands import (
 load_dotenv()
 
 TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_IDS = [
-    channel_id.strip()
-    for channel_id in os.getenv("CHANNEL_ID", "").split(",")
-    if channel_id.strip()
-]
-
-
 if not TOKEN:
     print("[ERROR] Need to set TOKEN in env.")
     sys.exit(1)
@@ -30,6 +24,17 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="/", intents=intents)
+
+
+@bot.event
+async def setup_hook():
+    migration = await migrate_legacy_json()
+    if migration.backup_path:
+        print(
+            "[INFO] Migrated legacy JSON: "
+            f"imported={migration.imported}, skipped={migration.skipped}, "
+            f"invalid={migration.invalid}, backup={migration.backup_path}"
+        )
 
 
 @tasks.loop(seconds=30)
@@ -45,12 +50,7 @@ async def polling_matches():
 
         target_channels = []
 
-        if CHANNEL_IDS:
-            for cid in CHANNEL_IDS:
-                ch = bot.get_channel(int(cid))
-                if ch:
-                    target_channels.append(ch)
-        elif polling_result.dc_channel_id:
+        if polling_result.dc_channel_id:
             ch = bot.get_channel(int(polling_result.dc_channel_id))
             if ch:
                 target_channels.append(ch)

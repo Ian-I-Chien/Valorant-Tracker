@@ -3,15 +3,13 @@ from dataclasses import dataclass
 from typing import Optional
 
 import discord
-from database.storage_json import UserJsonDB
+from database.storage_sqlite import UserSQLiteDB
 from valorant.match import Match
 from valorant.player import ValorantPlayer
 from utils import parse_player_name, get_env_or_interaction_channel
 import traceback
 
-# Global lock for all JSON operations:
-# This ensures polling, registration, and deletion
-# do not read/write the JSON storage at the same time.
+# Keep polling, registration, and deletion ordered within this bot process.
 _userdb_lock: Optional[asyncio.Lock] = None
 
 
@@ -22,6 +20,8 @@ class PollingMatchResult:
     dc_id: str
     valorant_puuid: str
     match_id: str
+    subscription_id: int
+    previous_match_id: Optional[str]
 
 
 def get_userdb_lock() -> asyncio.Lock:
@@ -41,19 +41,18 @@ def get_userdb_lock() -> asyncio.Lock:
 async def handle_polling_matches(interaction: discord.Interaction = None):
     """
     Background polling logic:
-    - Load all registered users from JSON
+    - Load all subscriptions from SQLite
     - For each Valorant account, fetch the last match ID from API
-    - Compare with last_polled_match_id stored in JSON
+    - Compare with last_polled_match_id stored on the subscription
     - If it is a new match, fetch and format the match data
     - Return delivery metadata without updating last_polled_match_id
     """
     lock = get_userdb_lock()
 
-    # Serialize access to JSON so polling does not race with
-    # registration or deletion.
+    # Avoid racing a poll with registration or deletion in this process.
     async with lock:
         try:
-            async with UserJsonDB() as user_model:
+            async with UserSQLiteDB() as user_model:
                 users_data = await user_model.get_all()
                 print("[DEBUG] Loaded user records:", users_data)
 
@@ -118,6 +117,8 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                                 dc_id=dc_id,
                                 valorant_puuid=valorant_puuid,
                                 match_id=last_match_id,
+                                subscription_id=account_data["subscription_id"],
+                                previous_match_id=last_polled_match_id,
                             )
 
                         except Exception as e:
@@ -138,10 +139,10 @@ async def mark_match_delivered(result: PollingMatchResult) -> bool:
     """Persist a match checkpoint only after Discord delivery succeeds."""
     lock = get_userdb_lock()
     async with lock:
-        async with UserJsonDB() as user_model:
+        async with UserSQLiteDB() as user_model:
             return await user_model.update_last_polled_match(
-                dc_id=result.dc_id,
-                valorant_puuid=result.valorant_puuid,
+                subscription_id=result.subscription_id,
+                expected_match_id=result.previous_match_id,
                 match_id=result.match_id,
             )
 
@@ -150,7 +151,7 @@ async def delete_valorant_account(
     interaction: discord.Interaction, valorant_account: str
 ):
     """
-    Removes a Valorant account from all registered users.
+    Remove a Valorant account owned by this user in this Discord server.
     """
     player_name, player_tag = await parse_player_name(interaction, valorant_account)
     if not player_name or not player_tag:
@@ -161,13 +162,14 @@ async def delete_valorant_account(
 
     lock = get_userdb_lock()
     dc_id = str(interaction.user.id)
+    dc_server_id = str(interaction.guild.id)
 
-    # Serialize deletion with polling/registration so changes
-    # are not overwritten.
+    # Serialize deletion with polling/registration in this process.
     async with lock:
-        async with UserJsonDB() as user_model:
+        async with UserSQLiteDB() as user_model:
             removed = await user_model.remove_valorant_account(
                 dc_id=dc_id,
+                dc_server_id=dc_server_id,
                 valorant_account=valorant_account,
             )
 
@@ -186,7 +188,7 @@ async def registered_with_valorant_account(
 ):
     """
     Registers a Valorant account to a Discord user.
-    Saves the user and linked Valorant account into JSON storage.
+    Saves the user, Valorant account, and channel subscription in SQLite.
     """
     player_name, player_tag = await parse_player_name(interaction, valorant_account)
     if not player_name or not player_tag:
@@ -224,10 +226,9 @@ async def registered_with_valorant_account(
 
     lock = get_userdb_lock()
 
-    # Serialize registration with polling/deletion so JSON
-    # updates are not lost.
+    # Serialize registration with polling/deletion in this process.
     async with lock:
-        async with UserJsonDB() as user_model:
+        async with UserSQLiteDB() as user_model:
             try:
                 await user_model.register_user(
                     dc_id=dc_id,
