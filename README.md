@@ -180,6 +180,8 @@ artwork does not prevent the rest of the card from rendering. Only Competitive
 and Unrated matches completed in the previous 30 days contribute to the
 performance metrics.
 
+<img src="pic/player_info_example.png" alt="Graphical 30-day player overview example" width="780">
+
 ## Development
 
 Install the requirements, then run:
