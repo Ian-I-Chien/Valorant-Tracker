@@ -86,7 +86,8 @@ async def on_ready():
         print(f"- {command.name}")
 
     await bot.change_presence(activity=discord.Game("Tracking your Valorant matches"))
-    polling_matches.start()
+    if not polling_matches.is_running():
+        polling_matches.start()
 
 
 @bot.tree.command(
