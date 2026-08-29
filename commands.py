@@ -80,6 +80,18 @@ async def handle_polling_matches(interaction: discord.Interaction = None):
                             if not last_match_id:
                                 continue
 
+                            # A newly registered account has no checkpoint yet.
+                            # Treat its current latest match as the baseline so
+                            # matches completed before registration are not sent
+                            # as new notifications.
+                            if last_polled_match_id is None:
+                                account_data["last_polled_match_id"] = last_match_id
+                                print(
+                                    f"[DEBUG] Initialized match checkpoint {last_match_id} "
+                                    f"for {account_str}, skipping existing match."
+                                )
+                                continue
+
                             # Skip if this match has already been processed
                             if last_polled_match_id == last_match_id:
                                 print(
