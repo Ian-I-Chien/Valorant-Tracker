@@ -404,6 +404,7 @@ class Match:
                     agent_name=player["agent"].get("name", "Unknown Agent"),
                     agent_id=player["agent"].get("id", ""),
                     team_id=player["team_id"],
+                    party_id=player.get("party_id"),
                     rank_name=(rank or {}).get("currenttierpatched", "Unrated"),
                     rank_icon_url=(rank or {}).get("images", {}).get("small"),
                     kills=stats.get("kills", 0),
