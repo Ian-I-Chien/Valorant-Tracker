@@ -136,6 +136,27 @@ python -m pytest -q
 python -m black --check .
 ```
 
+Developers with shell access can build the latest match embed without sending
+it or changing the polling checkpoint:
+
+```bash
+python -m tools.match_output --account "Name#Tag"
+```
+
+To manually deliver a known match to the channel configured for a Discord
+server, add the explicit `--send` flag:
+
+```bash
+python -m tools.match_output \
+  --account "Name#Tag" \
+  --match-id "MATCH_ID" \
+  --server-id "DISCORD_SERVER_ID" \
+  --send
+```
+
+Manual embeds are marked as developer tests and never advance a subscription's
+`last_polled_match_id`.
+
 The main modules are:
 
 ```text
