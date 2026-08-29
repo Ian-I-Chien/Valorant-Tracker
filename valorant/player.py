@@ -18,7 +18,7 @@ class ValorantPlayer:
         url = API_URLS["account"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
-        account_data = await fetch_json(url)
+        account_data = await fetch_json(url, cache_ttl=300)
         if not account_data or not account_data.get("data"):
             LOGGER.info(
                 "Cached account lookup failed for %s#%s; forcing refresh",
@@ -38,7 +38,7 @@ class ValorantPlayer:
         url = API_URLS["rank"].format(
             region=self.region, player_name=self.player_name, player_tag=self.player_tag
         )
-        rank_data = await fetch_json(url)
+        rank_data = await fetch_json(url, cache_ttl=300)
         self.rank_data = rank_data.get("data") if rank_data else None
         return self.rank_data
 
@@ -48,5 +48,5 @@ class ValorantPlayer:
             player_name=self.player_name,
             player_tag=self.player_tag,
         )
-        payload = await fetch_json(url)
+        payload = await fetch_json(url, cache_ttl=300)
         return (payload or {}).get("data") or []
