@@ -2,12 +2,14 @@ import asyncio
 import logging
 import os
 import time
-from collections import OrderedDict, deque
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Optional
 
 import aiohttp
 from dotenv import load_dotenv
+
+from .key_pool import ApiUnavailableError, KeyPool, configured_keys
 
 load_dotenv()
 
@@ -26,41 +28,8 @@ API_URLS = {
 }
 
 
-class SlidingWindowRateLimiter:
-    """Process-local sliding-window limiter for Henrik API requests."""
-
-    def __init__(self, limit: int, window_seconds: float):
-        self.limit = limit
-        self.window_seconds = window_seconds
-        self._request_times: deque[float] = deque()
-        self._lock: Optional[asyncio.Lock] = None
-
-    def _get_lock(self) -> asyncio.Lock:
-        if self._lock is None:
-            self._lock = asyncio.Lock()
-        return self._lock
-
-    async def acquire(self) -> None:
-        async with self._get_lock():
-            now = time.monotonic()
-            self._discard_expired(now)
-            if len(self._request_times) >= self.limit:
-                delay = self.window_seconds - (now - self._request_times[0])
-                LOGGER.info("API rate limit reached; waiting %.2f seconds", delay)
-                await asyncio.sleep(max(delay, 0))
-                now = time.monotonic()
-                self._discard_expired(now)
-            self._request_times.append(now)
-
-    def _discard_expired(self, now: float) -> None:
-        while (
-            self._request_times and now - self._request_times[0] >= self.window_seconds
-        ):
-            self._request_times.popleft()
-
-
-RATE_LIMITER = SlidingWindowRateLimiter(
-    MAX_REQUESTS_PER_MINUTE, RATE_LIMIT_WINDOW_SECONDS
+KEY_POOL = KeyPool(
+    configured_keys(os.environ), MAX_REQUESTS_PER_MINUTE, RATE_LIMIT_WINDOW_SECONDS
 )
 
 
@@ -147,18 +116,44 @@ def _request_key(url: str, params: Optional[dict[str, Any]]) -> str:
 async def _request_json(
     url: str, params: Optional[dict[str, Any]] = None
 ) -> Optional[dict[str, Any]]:
-    await RATE_LIMITER.acquire()
-    headers = {
-        "Authorization": os.getenv("API_KEY", ""),
-        "accept": "application/json",
-    }
+    try:
+        return await asyncio.wait_for(_request_with_keys(url, params), timeout=30)
+    except asyncio.TimeoutError:
+        raise ApiUnavailableError("Henrik API request timed out; retry later") from None
+
+
+async def _request_with_keys(
+    url: str, params: Optional[dict[str, Any]] = None
+) -> Optional[dict[str, Any]]:
     timeout = aiohttp.ClientTimeout(total=20, connect=8)
     async with aiohttp.ClientSession(timeout=timeout) as session:
-        async with session.get(url, headers=headers, params=params) as response:
-            if response.status == HTTP_OK:
-                return await response.json()
-            LOGGER.warning("Henrik API returned HTTP %s for %s", response.status, url)
-            return None
+        # A broken key must not turn one user query into unbounded retries.
+        for _ in range(min(3, len(KEY_POOL.states))):
+            async with KEY_POOL.lease() as state:
+                headers = {"Authorization": state.secret, "accept": "application/json"}
+                try:
+                    async with session.get(
+                        url, headers=headers, params=params, allow_redirects=False
+                    ) as response:
+                        rotate = await KEY_POOL.report(
+                            state, response.status, response.headers
+                        )
+                        if response.status == HTTP_OK:
+                            return await response.json()
+                        if rotate:
+                            continue
+                        if response.status in (403, 408, 429) or response.status >= 500:
+                            raise ApiUnavailableError(
+                                f"Henrik API unavailable (HTTP {response.status}); retry later"
+                            )
+                        LOGGER.warning("Henrik API returned HTTP %s", response.status)
+                        return None
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    await KEY_POOL.report(state, 0, {})
+                    raise ApiUnavailableError(
+                        "Could not reach Henrik API; retry later"
+                    ) from None
+        raise ApiUnavailableError("No usable Henrik API response within retry budget")
 
 
 async def fetch_json(

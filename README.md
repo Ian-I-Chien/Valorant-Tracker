@@ -66,8 +66,44 @@ Do not commit `.env`. Discord server notification channels are configured with
 commands and stored in SQLite; they do not belong in environment variables.
 
 `API_REQUESTS_PER_MINUTE` defaults to 60 to retain headroom below a 90-request
-HenrikDev key. `API_CACHE_MAX_ENTRIES` bounds the in-memory response cache for
+HenrikDev key. This limit applies **per key, per process**; lower it for keys
+with smaller quotas. `API_CACHE_MAX_ENTRIES` bounds the in-memory response cache for
 Raspberry Pi deployments.
+
+### Multiple Henrik API keys
+
+For independently provisioned keys permitted for use by the same application,
+replace `API_KEY` with a comma-separated list:
+
+```dotenv
+API_KEYS="first_key,second_key,third_key"
+API_REQUESTS_PER_MINUTE=60
+```
+
+Keys are read once at startup. After editing `.env`, restart the bot/service.
+Whitespace and empty entries are ignored; duplicate keys count only once.
+A nonempty `API_KEYS` list takes precedence; otherwise `API_KEY` remains supported.
+No keys means API requests fail with a configuration error, without unauthenticated calls.
+
+- Cache hits do not consume a key or advance rotation. Polling and commands share
+  one pool and cache; polling frequency does not increase when keys are added.
+- Requests rotate across usable keys, reserving each key's independent sliding-window
+  budget before sending. One request per key may be in flight; different keys can run concurrently.
+- HTTP 401 disables that key until restart. A personal HTTP 429 (remaining quota is
+  zero) cools only that key. `Retry-After` takes precedence over reset headers;
+  missing or invalid reset information falls back conservatively to 60 seconds.
+- HTTP 403 can indicate maintenance; a 429 without personal exhaustion can be
+  global. Both back off the entire pool rather than cycling through credentials.
+  Network errors and HTTP 5xx use shared exponential backoff (2–60 seconds).
+- One request waits at most 5 seconds for a key, tries at most 3 keys, and has a
+  30-second total deadline. Exhaustion/failure uses eligible stale cache or reports
+  temporary unavailability. HTTP connections retain their 8-second connect and
+  20-second total timeouts.
+- Logs identify keys only as `key-1`, `key-2`, etc.; credentials are never logged.
+  Test and production must use distinct keys (or budget for their combined traffic):
+  counters are not shared between processes, machines, or other applications.
+
+See [key pool design](designs/api-key-pool.md) for response handling details.
 
 Start the bot:
 
