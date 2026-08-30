@@ -122,7 +122,14 @@ class MultiShopService(ShopService):
         if account.get("auth_required"):
             raise LoginExpired("This account needs /login again.")
         cached = self.cache.get((owner, puuid))
-        if cached and min(cached["expires"], cached["fetched_at"] + 300) > time.time():
+        if (
+            cached
+            and cached.get(
+                "cache_until",
+                min(cached["expires"], cached["fetched_at"] + 300),
+            )
+            > time.time()
+        ):
             return cached
         try:
             if account["expires"] <= time.time() + 120:
@@ -150,11 +157,21 @@ class MultiShopService(ShopService):
                 pass
         result["riot_id"] = account_label(account)
         result["fetched_at"] = time.time()
-        for item in result["offers"]:
+        market = result.get("night_market")
+        items = result["offers"] + (market["offers"] if market else [])
+        metadata = {}
+        for item in items:
             try:
-                item.update(await self.client.skin(item["id"]))
+                if item["id"] not in metadata:
+                    metadata[item["id"]] = await self.client.skin(item["id"])
+                item.update(metadata[item["id"]])
             except Exception:
                 item.update(name="Skin " + item["id"], icon=None)
+        result["cache_until"] = min(
+            result["expires"],
+            result["fetched_at"] + 300,
+            market["expires"] if market else float("inf"),
+        )
         if len(self.cache) >= 100:
             self.cache.pop(next(iter(self.cache)))
         self.cache[(owner, puuid)] = result
