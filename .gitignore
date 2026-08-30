@@ -12,3 +12,5 @@ __pycache__/
 /data/user_data.json
 /data/assets/
 /url/
+private-shop/
+*.key

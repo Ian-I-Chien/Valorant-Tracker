@@ -161,6 +161,12 @@ async def help_command(interaction: discord.Interaction):
     await show_help(interaction)
 
 
+if os.getenv("SHOP_ENABLED", "0") == "1":
+    from shop_commands import register_shop_commands
+
+    register_shop_commands(bot)
+
+
 def run_bot():
     if not TOKEN:
         raise RuntimeError("BOT_TOKEN must be set")
