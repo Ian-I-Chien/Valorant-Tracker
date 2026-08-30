@@ -183,6 +183,22 @@ changes. If card rendering fails, the command returns a compact text summary.
 
 ## Persistence
 
+### Experimental shop (test-only, off by default)
+
+An opt-in `/login`, `/shop`, and `/logout` flow is available for explicitly
+allowlisted testers. It stores encrypted Riot authorization separately from match
+tracking. `/login`, `/logout`, and errors stay private. `/shop` shares a 2x2
+card with the linked Riot ID, daily skins, prices, and refresh time publicly
+in the invoking channel; rendering failures fall back to public text. This is an unofficial client flow, not an approved Riot
+store API. Login callback URLs and tokens are sensitive; no account-safety or
+long-term availability guarantee is made.
+
+Read [the setup and security boundaries](designs/private-shop.md) before enabling
+it. A separate key file and tester allowlist are required. Do not enable it on
+production merely by updating the code. Shop lookup does not use Henrik quota.
+
+### Match tracking database
+
 Runtime data is stored in:
 
 ```text

@@ -20,3 +20,4 @@ yarl==1.18.0
 pre-commit==4.0.1
 black==24.8.0
 pytest
+cryptography==46.0.3
