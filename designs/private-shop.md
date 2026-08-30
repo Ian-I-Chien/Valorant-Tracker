@@ -1,6 +1,7 @@
 # Experimental shop
 
-Status: opt-in test implementation. Not enabled in production. The manual probe
+Status: opt-in implementation, disabled by default. Each deployment chooses
+restricted or open registration explicitly. The manual probe
 verified a code exchange, one refresh, and a four-offer shop response; this does
 not validate indefinite refresh, all regions, or a production-safe integration.
 
@@ -53,13 +54,13 @@ requiring a new login; metadata lookup failure does not hide valid shop data.
 not revoke Riot sessions, erase previously created backups, delete previously
 shared store messages, or affect match tracking.
 
-## Test deployment
+## Deployment configuration
 
-Install requirements in the test environment. Create a key using
+Install requirements in the target environment. Create a key using
 `python tools/init_shop_key.py /absolute/private/path/shop.key`; the directory
 must already exist. This refuses to overwrite a key and never prints its contents.
 
-Set only in the test environment:
+Set separately in each bot environment:
 
 ```dotenv
 SHOP_ENABLED=1
@@ -68,7 +69,18 @@ SHOP_KEY_FILE=/absolute/private/path/shop.key
 SHOP_DB_PATH=/absolute/private/path/shop-test.db
 ```
 
-The allowlist is mandatory (1–100 IDs). Missing settings disable the feature;
+Use 1–100 positive Discord IDs to restrict access, or exactly `*` to allow
+every Discord user to link their own account. Missing, empty, mixed wildcard,
+or invalid values disable the feature; public access is never the default.
+The setting controls registration eligibility, not Riot API quotas or a cap
+on total registered accounts. Open registration preserves owner isolation.
+Each TEST/product process reads its own configuration and uses its own vault
+and encryption key. Do not copy TEST credentials into production.
+
+At most 1,000 unfinished login attempts are held in memory. Expired attempts
+are removed when a new login starts; existing owners can replace their attempt
+even at the limit. The per-owner shop cache remains capped at 100 entries.
+
 `SHOP_ENABLED` defaults to off. Restart to change settings. Use `/login`, then
 `/shop`, then `/logout` to verify deletion. Verify persistence by restarting the
 test bot with the same key and vault. Losing the key requires relinking; do not

@@ -310,9 +310,20 @@ def account_label(account):
     return f"{name}#{tag}" if tag else name + " (tag unavailable)"
 
 
+def parse_allowed_users(value):
+    """Only an explicit '*' opens registration; missing/invalid config fails closed."""
+    if value.strip() == "*":
+        return None
+    allowed = {int(item.strip()) for item in value.split(",") if item.strip()}
+    if not allowed or len(allowed) > 100 or any(owner <= 0 for owner in allowed):
+        raise ValueError("Configure '*' or 1-100 positive Discord user IDs")
+    return allowed
+
+
 class ShopService:
     def __init__(self, vault, client, allowed):
-        self.vault, self.client, self.allowed = vault, client, set(allowed)
+        self.vault, self.client = vault, client
+        self.allowed = None if allowed is None else set(allowed)
         self.pending = {}
         self.cache = {}
         # Small private beta: one operation at a time also orders logout against
@@ -320,11 +331,19 @@ class ShopService:
         self.lock = asyncio.Lock()
 
     def check(self, owner):
-        if owner not in self.allowed:
+        if self.allowed is not None and owner not in self.allowed:
             raise ShopError("The shop feature is currently limited to invited testers.")
 
     def begin(self, owner):
         self.check(owner)
+        now = time.monotonic()
+        self.pending = {
+            user: entry for user, entry in self.pending.items() if entry[2] > now
+        }
+        if owner not in self.pending and len(self.pending) >= 1000:
+            raise ShopError(
+                "Too many pending logins. Please try again in a few minutes."
+            )
         attempt, nonce = secrets.token_urlsafe(24), secrets.token_urlsafe(32)
         self.pending[owner] = (attempt, nonce, time.monotonic() + 300)
         url = "https://auth.riotgames.com/authorize?" + urlencode(
