@@ -350,3 +350,45 @@ The existing scoreboard highlights only the requested player. If card rendering
 fails or the mode is unsupported, a compact match summary is sent instead.
 API availability and history visibility still apply; this is not a live-match
 lookup. No TEST or production deployment is included in this change.
+
+### Simulated Discord command output (TEST only)
+
+Run from the repository root. This developer tool invokes read-only handlers
+without importing `bot.py`, starting polling, or opening a Discord gateway.
+It uses a new temporary tracking database, never the existing tracking database
+or shop credentials. `/show_config` therefore shows an unconfigured server.
+Supported handlers: `last_match`, `info`, `predict`, `help`, `show_config`.
+Registration, deletion, shop authorization, and settings mutations are excluded.
+
+Preview only (no Discord login or message send; player lookups still call the
+Valorant API using the explicitly selected TEST env file):
+
+```sh
+python -m tools.command_smoke --test-env /path/to/test.env \
+  --account 'name#tag' --commands last_match info predict help show_config \
+  --output-dir /tmp/command-preview
+```
+
+Add these allowlist values to your private TEST env file alongside its existing
+`BOT_TOKEN` and API keys. Do not commit that file:
+
+```dotenv
+SMOKE_TEST_BOT_ID=<test bot user ID>
+SMOKE_TEST_GUILD_ID=<test server ID>
+SMOKE_TEST_CHANNEL_ID=<test channel ID>
+```
+
+Add `--send` to publish results. The authenticated bot ID, destination server,
+and channel must match this allowlist, and the bot name must contain `test`.
+Use only a dedicated TEST bot token; do not designate a production bot as TEST.
+Private responses are saved locally but not published unless you also specify
+`--include-private`. Such previews are visibly labelled as intentionally public
+TEST messages. All messages disable mentions. Output JSON and PNG files contain
+player data; store them outside the repository and delete them when no longer
+needed. The client closes when the run finishes or fails. No service is restarted.
+
+This is an output smoke test, not a real slash-command invocation: option
+registration, Discord permission checks, actual ephemeral visibility, and
+interaction tokens still require manual Discord testing. A saved/sent response
+can itself be an API error or no-data message; inspect the output to determine
+whether the feature succeeded.
