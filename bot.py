@@ -109,7 +109,7 @@ async def on_ready():
     for command in bot.tree.get_commands():
         LOGGER.debug("Registered command: %s", command.name)
 
-    await bot.change_presence(activity=discord.Game("Tracking your Valorant matches"))
+    await bot.change_presence(activity=discord.Game("Tracking your Valorant matches | Daily shop"))
     if not polling_matches.is_running():
         polling_matches.start()
 
