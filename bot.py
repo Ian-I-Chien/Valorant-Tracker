@@ -9,6 +9,7 @@ from utils import parse_player_name
 from discord.ext import commands, tasks
 from database.storage_sqlite import migrate_legacy_json
 from help_command import show_help
+from last_match_command import show_last_match
 from commands import (
     get_notification_channel_id,
     handle_polling_matches,
@@ -148,6 +149,14 @@ async def show_config(interaction: discord.Interaction):
 @app_commands.describe(username="Registered Valorant username or name#tag")
 async def predict(interaction: discord.Interaction, username: str):
     await predict_registered_player(interaction, username)
+
+
+@bot.tree.command(
+    name="last_match", description="Show the latest completed match for a Riot ID"
+)
+@app_commands.describe(id="Required full Riot ID: name#tag")
+async def last_match(interaction: discord.Interaction, id: str):
+    await show_last_match(interaction, id)
 
 
 @bot.tree.command(name="info", description="Show recent stats for a registered player")

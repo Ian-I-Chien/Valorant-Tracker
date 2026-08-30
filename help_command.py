@@ -11,6 +11,13 @@ def build_help_embed() -> discord.Embed:
         color=discord.Color.from_str("#ff4655"),
     )
     embed.add_field(
+        name="Last match - standalone lookup",
+        value="`/last_match id:name#tag` - Share the latest completed match. "
+        "Full Riot ID is required. No registration or shop login needed; "
+        "does not change tracking. Errors are visible only to you.",
+        inline=False,
+    )
+    embed.add_field(
         name="Player lookup — no registration needed",
         value=(
             "`/info username:name#tag` — View recent stats and the RR trend.\n"
