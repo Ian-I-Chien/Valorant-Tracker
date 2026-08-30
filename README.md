@@ -9,6 +9,7 @@ Match and account data come from the
 
 ## Features
 
+- Show an English `/help` guide privately, without API calls or registration.
 - Track multiple Valorant accounts across multiple Discord servers.
 - Configure one notification channel independently for each Discord server.
 - Store subscriptions and match checkpoints in SQLite.
@@ -133,14 +134,35 @@ subscriptions in that server immediately and does not require a bot restart.
 
 ## Commands
 
+Use `/help` for an English command guide visible only to you. It explains
+player lookup, tracking, and server setup without making any Henrik API requests.
+
 | Command | Who can use it | Description |
 | --- | --- | --- |
+| `/help` | Everyone | Show a private guide to player lookup, tracking, and server settings. |
 | `/set_channel channel:#channel` | Server manager | Set the server's match notification channel. |
 | `/show_config` | Everyone | Show the notification channel for the current server. |
 | `/reg_val valorant_account:name#tag` | Everyone | Register and begin tracking a Valorant account. |
 | `/del_val valorant_account:name#tag` | Account owner | Stop tracking one of the caller's accounts in this server. |
-| `/predict username:name` | Everyone | Generate an entertainment-only pre-match prediction for a player. |
-| `/info username:name` | Everyone | Show a graphical 30-day overview for a player. |
+| `/predict username:name#tag` | Everyone | Generate an entertainment-only pre-match prediction; no registration required. |
+| `/info username:name#tag` | Everyone | Show a graphical 30-day overview; no registration required. |
+
+### Quick start
+
+- **Just looking up a player?** Use `/info username:Player#TAG` or
+  `/predict username:Player#TAG`. Neither command enables tracking.
+- **Want automatic match notifications?** A member with **Manage Server**
+  permission first runs `/set_channel channel:#valorant-results`, then you run
+  `/reg_val valorant_account:Player#TAG`.
+- **Want to stop tracking?** Use `/del_val valorant_account:Player#TAG` for an
+  account you registered in the current server.
+- **Need help or settings?** Use `/help` for the guide or `/show_config` to
+  check the current server's notification channel.
+
+`/help` works in servers and direct messages, responds only to the caller,
+and does not access Henrik or modify subscriptions. Use the player, tracking,
+and server-settings commands inside a Discord server. The guide includes
+command syntax, permission requirements, and a documentation link.
 
 If `/reg_val` is used before `/set_channel`, registration is rejected with an
 instruction to contact a server administrator.

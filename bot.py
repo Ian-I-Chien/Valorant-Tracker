@@ -8,6 +8,7 @@ from discord import app_commands
 from utils import parse_player_name
 from discord.ext import commands, tasks
 from database.storage_sqlite import migrate_legacy_json
+from help_command import show_help
 from commands import (
     get_notification_channel_id,
     handle_polling_matches,
@@ -151,6 +152,13 @@ async def predict(interaction: discord.Interaction, username: str):
 @app_commands.describe(username="Registered Valorant username or name#tag")
 async def info(interaction: discord.Interaction, username: str):
     await show_registered_player_info(interaction, username)
+
+
+@bot.tree.command(
+    name="help", description="Show commands and how to use Valorant Tracker"
+)
+async def help_command(interaction: discord.Interaction):
+    await show_help(interaction)
 
 
 def run_bot():
