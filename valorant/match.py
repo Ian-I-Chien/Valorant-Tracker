@@ -365,7 +365,9 @@ class Match:
 
         return embed
 
-    async def build_match_card(self) -> bytes:
+    async def build_match_card(
+        self, highlight_accounts: Optional[set[str]] = None
+    ) -> bytes:
         """Build a graphical scoreboard for the currently loaded match."""
         from valorant.player import ValorantPlayer
 
@@ -373,11 +375,15 @@ class Match:
             raise ValueError("build_match_card called with no match data")
 
         data = self.last_match_data["data"]
-        async with UserSQLiteDB() as user_model:
-            subscriptions = await user_model.list_subscriptions()
-        registered_accounts = {
-            subscription.valorant_account.casefold() for subscription in subscriptions
-        }
+        if highlight_accounts is None:
+            async with UserSQLiteDB() as user_model:
+                subscriptions = await user_model.list_subscriptions()
+            registered_accounts = {
+                subscription.valorant_account.casefold()
+                for subscription in subscriptions
+            }
+        else:
+            registered_accounts = {account.casefold() for account in highlight_accounts}
         players_kast = self.calculate_kast()
         sorted_players = sorted(
             data["players"], key=lambda player: player["stats"]["score"], reverse=True
@@ -385,7 +391,7 @@ class Match:
         rank_data = await asyncio.gather(
             *[
                 self.get_rank_with_retries(
-                    ValorantPlayer(player["name"], player["tag"])
+                    ValorantPlayer(player["name"], player["tag"], region=self.region)
                 )
                 for player in sorted_players
             ]

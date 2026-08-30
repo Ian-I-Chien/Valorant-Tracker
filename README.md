@@ -336,3 +336,17 @@ journalctl -u valorant-tracker.service -f
 ## Contact
 
 Email: err@csie.io
+
+
+### Last match lookup
+
+Use `/last_match id:name#tag` in a server to share the latest completed match
+available from the match-history API (history cache: up to 60 seconds).
+The full Riot ID is required, even if you have registered for tracking or logged
+in to the shop. This command does not read shop credentials, create a tracking
+subscription, or change polling checkpoints. It uses the account's region.
+Successful results are public in the invoking channel; errors remain private.
+The existing scoreboard highlights only the requested player. If card rendering
+fails or the mode is unsupported, a compact match summary is sent instead.
+API availability and history visibility still apply; this is not a live-match
+lookup. No TEST or production deployment is included in this change.
