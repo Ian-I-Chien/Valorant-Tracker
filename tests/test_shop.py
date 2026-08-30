@@ -51,6 +51,58 @@ class Client:
         return {"name": "Test Skin", "icon": None}
 
 
+def test_public_registration_still_isolates_accounts(tmp_path):
+    async def run():
+        service, _ = await make_service(tmp_path)
+        service.allowed = None
+        await link(service, 999)
+        attempt, _ = service.begin(1000)
+        with pytest.raises(ShopError):
+            await service.login(999, attempt, "http://localhost/redirect?code=fake")
+        with pytest.raises(ShopError, match="link"):
+            await service.shop(1000)
+        await link(service, 1000)
+        await service.logout(999)
+        assert await service.vault.get(999) is None
+        assert await service.vault.get(1000) is not None
+        assert (await service.shop(1000))["offers"]
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "value", ["", " ", ",", "*,123", "0", "-1", "everyone", "1,invalid"]
+)
+def test_missing_or_invalid_registration_config_fails_closed(value):
+    from valorant.shop_service import parse_allowed_users
+
+    with pytest.raises(ValueError):
+        parse_allowed_users(value)
+
+
+def test_explicit_public_registration_and_restricted_config():
+    from valorant.shop_service import parse_allowed_users
+
+    assert parse_allowed_users(" * ") is None
+    assert parse_allowed_users("1,2,1") == {1, 2}
+
+
+def test_public_pending_logins_are_bounded_and_expire(tmp_path):
+    async def run():
+        service, _ = await make_service(tmp_path)
+        service.allowed = None
+        for owner in range(1000):
+            service.begin(owner)
+        with pytest.raises(ShopError, match="pending"):
+            service.begin(2000)
+        service.begin(1)  # Existing owner may replace their request.
+        service.pending[0] = ("expired", "nonce", 0)
+        service.begin(2000)
+        assert len(service.pending) == 1000 and 0 not in service.pending
+
+    asyncio.run(run())
+
+
 async def make_service(tmp_path):
     key = Fernet.generate_key()
     vault = Vault(tmp_path / "credentials.db", key)

@@ -183,11 +183,12 @@ changes. If card rendering fails, the command returns a compact text summary.
 
 ## Persistence
 
-### Experimental shop (test-only, off by default)
+### Experimental shop (off by default)
 
-An opt-in `/login`, `/shop`, and `/logout` flow is available for explicitly
-allowlisted testers. It stores encrypted Riot authorization separately from match
-tracking. `/login`, `/logout`, and errors stay private. `/shop` shares a 2x2
+An opt-in `/login`, `/shop`, and `/logout` flow supports either an explicit
+Discord user allowlist or open registration with `SHOP_ALLOWED_USER_IDS=*`.
+Each bot environment reads its own settings; the default remains disabled.
+It stores encrypted Riot authorization separately from match tracking. `/login`, `/logout`, and errors stay private. `/shop` shares a 2x2
 card with the linked Riot ID, daily skins, prices, and refresh time publicly
 in the invoking channel; rendering failures fall back to public text. This is an unofficial client flow, not an approved Riot
 store API. Login callback URLs and tokens are sensitive; no account-safety or

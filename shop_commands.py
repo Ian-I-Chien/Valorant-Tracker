@@ -9,7 +9,13 @@ from pathlib import Path
 import discord
 from discord import app_commands
 
-from valorant.shop_service import RiotStoreClient, ShopError, ShopService, Vault
+from valorant.shop_service import (
+    RiotStoreClient,
+    ShopError,
+    ShopService,
+    Vault,
+    parse_allowed_users,
+)
 from valorant.shop_card import shop_card_png
 
 LOGGER = logging.getLogger(__name__)
@@ -166,17 +172,13 @@ def register_shop_commands(bot):
         return
     # Missing/invalid settings fail closed. Do not create an unencrypted vault.
     try:
-        allowed = {
-            int(value.strip())
-            for value in os.environ["SHOP_ALLOWED_USER_IDS"].split(",")
-            if value.strip()
-        }
-        if not allowed or len(allowed) > 100:
-            raise ValueError()
+        allowed = parse_allowed_users(os.environ["SHOP_ALLOWED_USER_IDS"])
         key = Path(os.environ["SHOP_KEY_FILE"]).read_bytes().strip()
         vault = Vault(os.getenv("SHOP_DB_PATH", "private-shop/credentials.db"), key)
     except Exception:
-        LOGGER.error("Shop disabled: configure a valid key file and 1-100 tester IDs")
+        LOGGER.error(
+            "Shop disabled: configure a valid key file and '*' or 1-100 user IDs"
+        )
         return
     service = ShopService(vault, RiotStoreClient(), allowed)
     initialized = False
@@ -207,7 +209,7 @@ def register_shop_commands(bot):
                 "**Link Riot account**\n" + status + "1. Open Riot login and sign in.\n"
                 "2. Copy the final localhost URL, then paste it below.\n"
                 "-# A localhost error is normal. Complete within 5 minutes.\n\n"
-                "**Note:** Unofficial test feature with account risks. Submitting shares login authorization "
+                "**Note:** Unofficial feature with account risks. Submitting shares login authorization "
                 "with Discord and this bot; encrypted tokens stay on the RPI. "
                 "Never post the URL publicly or submit your password.",
                 view=LoginView(service, interaction.user.id, attempt, url),

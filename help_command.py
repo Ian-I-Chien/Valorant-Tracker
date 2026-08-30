@@ -57,7 +57,11 @@ def build_help_embed() -> discord.Embed:
     )
     if os.getenv("SHOP_ENABLED", "0") == "1":
         embed.add_field(
-            name="Experimental shop — invited testers only",
+            name=(
+                "Experimental shop"
+                if os.getenv("SHOP_ALLOWED_USER_IDS", "").strip() == "*"
+                else "Experimental shop — invited testers only"
+            ),
             value="`/login` — Link your own Riot account after reading the consent notice.\n"
             "`/shop` — Share your daily shop in this channel.\n"
             "`/logout` — Delete stored shop credentials (does not revoke Riot sessions).",
