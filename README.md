@@ -190,7 +190,12 @@ Discord user allowlist or open registration with `SHOP_ALLOWED_USER_IDS=*`.
 Each bot environment reads its own settings; the default remains disabled.
 It stores encrypted Riot authorization separately from match tracking. `/login`, `/logout`, and errors stay private. `/shop` shares a 2x2
 card with the linked Riot ID, daily skins, prices, and refresh time publicly
-in the invoking channel; rendering failures fall back to public text. This is an unofficial client flow, not an approved Riot
+in the invoking channel; rendering failures fall back to public text.
+When an active Night Market is returned, the same `/shop` card appends its
+six offers, original prices, discounts, final prices, and separate end time.
+Without an active event, the entire Night Market section is omitted.
+This integration awaits live event verification before merge/deployment; see
+[the validation checklist](designs/night-market.md). This is an unofficial client flow, not an approved Riot
 store API. Login callback URLs and tokens are sensitive; no account-safety or
 long-term availability guarantee is made.
 

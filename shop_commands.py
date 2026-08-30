@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import time
 from io import BytesIO
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from valorant.shop_service import (
     parse_allowed_users,
 )
 from valorant.shop_card import shop_card_png
+from valorant.night_market import active_night_market
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,16 +29,43 @@ def display(value):
 
 def shop_text(result):
     title = display(result.get("riot_id") or "Linked account")
-    lines = [f"**{title} — Daily Store**", f"Refreshes <t:{int(result['expires'])}:R>"]
+    lines = [
+        f"**{title} — Store**",
+        f"Daily Store • Refreshes <t:{int(result['expires'])}:R>",
+    ]
     for item in result["offers"][:4]:
         price = (
             f"{item['price']} VP"
             if item.get("price") is not None
             else "Price unavailable"
         )
-        lines.append(f"• {display(item.get('name') or 'Unknown skin')} — {price}")
+        lines.append(f"• {display(item.get('name') or 'Unknown skin')[:60]} — {price}")
     if not result["offers"]:
         lines.append("No daily offers available.")
+    market = active_night_market(result, time.time())
+    if market:
+        lines.append(f"\n**Night Market** • Ends <t:{int(market['expires'])}:R>")
+        for item in market["offers"][:6]:
+            original = (
+                f"~~{item['original_price']} VP~~"
+                if item.get("original_price") is not None
+                else "Base price unavailable"
+            )
+            price = (
+                f"{item['price']} VP"
+                if item.get("price") is not None
+                else "Price unavailable"
+            )
+            discount = (
+                f" (-{item['discount_percent']}%)"
+                if item.get("discount_percent") is not None
+                else ""
+            )
+            lines.append(
+                f"• {display(item.get('name') or 'Unknown skin')[:60]} — {original} → {price}{discount}"
+            )
+    if result.get("night_market_unavailable"):
+        lines.append("Night Market data unavailable; try /shop again later.")
     return "\n".join(lines)
 
 
@@ -59,11 +88,16 @@ async def private_result(interaction, operation, success=None, *, public_shop=Fa
             )
         else:
             try:
-                async with asyncio.timeout(15):
+                async with asyncio.timeout(40):
                     png = await shop_card_png(result)
                 attachment = discord.File(BytesIO(png), filename="daily-store.png")
                 try:
-                    content = f"**{display(result.get('riot_id') or 'Linked account')} — Daily Store** • Refreshes <t:{int(result['expires'])}:R>"
+                    content = f"**{display(result.get('riot_id') or 'Linked account')} — Store** • Daily refresh <t:{int(result['expires'])}:R>"
+                    market = active_night_market(result, time.time())
+                    if market:
+                        content += (
+                            f" • Night Market ends <t:{int(market['expires'])}:R>"
+                        )
                     if public_shop:
                         await interaction.followup.send(
                             content=content,

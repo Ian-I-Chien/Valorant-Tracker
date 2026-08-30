@@ -40,8 +40,9 @@ are saved before fetching the store. Explicit invalid authorization removes the
 local record; transient failures preserve it. No blind retries after token exchange.
 All requests have timeouts and redirects disabled. Quota failures introduce cooldown.
 
-Shop results are memory-cached per owner until the reported rotation deadline
-(capped at 24 hours). Images come from a restricted public asset host. Failed
+Shop results are memory-cached per owner for at most five minutes, never
+past the daily rotation or active Night Market deadline. This allows a newly
+opened event to appear without waiting for the next daily rotation. Images come from a restricted public asset host. Failed
 asset lookups fall back to skin IDs and prices without losing the store response.
 The shop renders one 2x2 image with Riot ID, prices, and refresh time.
 Missing artwork and prices are explicit; card failures use a text fallback.
@@ -85,7 +86,8 @@ even at the limit. The per-owner shop cache remains capped at 100 entries.
 `/shop`, then `/logout` to verify deletion. Verify persistence by restarting the
 test bot with the same key and vault. Losing the key requires relinking; do not
 generate a replacement over it. No purchases, friend-shop lookup, automatic
-notifications, or night market in this first version.
+notifications, or a separate Night Market command. Night Market data, when
+available, is included in `/shop`; see [the validation plan](night-market.md).
 
 ## References
 
