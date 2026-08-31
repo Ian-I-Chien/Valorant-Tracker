@@ -392,3 +392,22 @@ registration, Discord permission checks, actual ephemeral visibility, and
 interaction tokens still require manual Discord testing. A saved/sent response
 can itself be an API error or no-data message; inspect the output to determine
 whether the feature succeeded.
+
+### Multi-account shop (new)
+
+`/login` adds accounts, preserving other logins (up to 25). Re-login updates only
+that account. `/shop` combines all linked stores into one image and one public
+message; `/shop account:...` selects one. There is no default account.
+`/logout account:...` removes one account.
+
+Use `/accounts` for private account management and the all-account notification
+toggle. The report destination is the server channel configured with `/set_channel`;
+the panel displays that channel. Both manual shops and automatic updates use it. All current
+and future login accounts are included. Notifications are text in that channel,
+not DMs, and start after the next observed store update. `/shop_notify` is removed.
+Old DM notification consent is disabled; re-enable in `/accounts`.
+
+Authorization failures remain private in `/accounts`. Missing destinations or send
+permissions disable notifications instead of sending elsewhere. Match tracking
+registration is unrelated. See [design and rollback](designs/multi-account-shop.md)
+for migration backups, delivery guarantees and TEST verification details.

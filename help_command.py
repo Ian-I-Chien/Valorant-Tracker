@@ -70,8 +70,9 @@ def build_help_embed() -> discord.Embed:
                 else "Experimental shop — invited testers only"
             ),
             value="`/login` — Link your own Riot account after reading the consent notice.\n"
-            "`/shop` — Share your daily shop in this channel.\n"
-            "`/logout` — Delete stored shop credentials (does not revoke Riot sessions).",
+            "`/shop [account]` — Share all linked daily shops, or one selected account.\n"
+            "`/accounts` — Manage accounts and all-account channel notifications.\n"
+            "`/logout account` — Remove one account (does not revoke Riot sessions).",
             inline=False,
         )
     return embed
