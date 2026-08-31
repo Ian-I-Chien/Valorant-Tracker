@@ -395,19 +395,19 @@ whether the feature succeeded.
 
 ### Multi-account shop (new)
 
-`/login` now adds accounts instead of replacing a different account. Re-login to
-refresh one account's authorization; existing accounts are preserved (up to 25).
-`/shop` publicly shares all linked shops; `/shop account:...` selects just one.
-There is no default account. `/logout account:...` removes one selected account.
+`/login` adds accounts, preserving other logins (up to 25). Re-login updates only
+that account. `/shop` combines all linked stores into one image and one public
+message; `/shop account:...` selects one. There is no default account.
+`/logout account:...` removes one account.
 
-Use `/accounts` or `/shop_notify` for private account management and the single
-all-account notification toggle. Notifications start OFF and require a successful
-DM test before enabling. All current and future login accounts are included;
-notifications start at the next observed shop update, not immediately. Updates
-are text DMs; an inaccessible DM disables notifications instead of posting publicly.
-Match tracking registration is unrelated.
+Use `/accounts` for private account management and the all-account notification
+toggle. Enable it in the server channel that should receive updates; the panel
+shows the destination and offers "Move notifications to this channel". All current
+and future login accounts are included. Notifications are text in that channel,
+not DMs, and start after the next observed store update. `/shop_notify` is removed.
+Old DM notification consent is disabled; re-enable in your chosen channel.
 
-See [multi-account design and rollback](designs/multi-account-shop.md) before
-upgrading: encrypted single-account records migrate to a versioned bundle, and
-rollback needs a pre-migration vault backup. Ambiguous notification deliveries are
-not retried, to avoid duplicate messages. `/shop` is always available for manual lookup.
+Authorization failures remain private in `/accounts`. Missing destinations or send
+permissions disable notifications instead of sending elsewhere. Match tracking
+registration is unrelated. See [design and rollback](designs/multi-account-shop.md)
+for migration backups, delivery guarantees and TEST verification details.

@@ -95,7 +95,7 @@ def test_notifications_baseline_rollover_restart_and_new_accounts(tmp_path):
     async def run():
         s, c = await setup(tmp_path)
         await link(s, c)
-        await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
         send = AsyncMock(return_value=True)
         await s.notify_owner(1, send)
         send.assert_not_awaited()
@@ -125,7 +125,7 @@ def test_expired_account_preserved_warning_once_and_relogin(tmp_path):
         await link(s, c)
         await link(s, c, P2)
         c.expired.add(P1)
-        await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
         send = AsyncMock(return_value=True)
         await s.notify_owner(1, send)
         assert send.call_args.args[2] == ["Account1#TAG"]
@@ -145,7 +145,7 @@ def test_blocked_dm_disables_without_removing_accounts(tmp_path):
     async def run():
         s, c = await setup(tmp_path)
         await link(s, c)
-        await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
         c.expired.add(P1)
         await s.notify_owner(1, AsyncMock(return_value=False))
         accounts, enabled = await s.accounts(1)
@@ -159,7 +159,7 @@ def test_transient_error_does_not_delete_credentials_or_stop_other_accounts(tmp_
         s, c = await setup(tmp_path)
         await link(s, c)
         await link(s, c, P2)
-        await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
         c.fail.add(P1)
         await s.notify_owner(1, AsyncMock())
         data = await s.vault.get(1)
@@ -174,7 +174,7 @@ def test_claim_saved_before_ambiguous_delivery_failure(tmp_path):
     async def run():
         s, c = await setup(tmp_path)
         await link(s, c)
-        await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
         await s.notify_owner(1, AsyncMock())
         data = await s.vault.get(1)
         data["states"][P1]["next"] = time.time() - 1
@@ -227,5 +227,24 @@ def test_rotated_token_persisted_before_store_failure(tmp_path):
         with pytest.raises(ShopError):
             await s.shop(1, P1)
         assert (await s.vault.get(1))["accounts"][P1]["refresh_token"] == "rotated"
+
+    asyncio.run(run())
+
+
+def test_old_dm_consent_cannot_become_public_channel_consent(tmp_path):
+    async def run():
+        s, c = await setup(tmp_path)
+        await link(s, c)
+        data = await s.vault.get(1)
+        data["notify"] = True
+        data.pop("notify_target", None)
+        await s.vault.put(1, data)
+        assert not (await s.accounts(1))[1]
+        with pytest.raises(ShopError):
+            await s.set_notifications(1, True)
+        await s.set_notifications(1, True, {"guild": 20, "channel": 10})
+        assert await s.notification_target(1) == {"guild": 20, "channel": 10}
+        await s.set_notifications(1, True, {"guild": 20, "channel": 11})
+        assert await s.notification_target(1) == {"guild": 20, "channel": 11}
 
     asyncio.run(run())

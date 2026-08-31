@@ -71,8 +71,7 @@ def build_help_embed() -> discord.Embed:
             ),
             value="`/login` — Link your own Riot account after reading the consent notice.\n"
             "`/shop [account]` — Share all linked daily shops, or one selected account.\n"
-            "`/accounts` — Manage accounts and all-account DM notifications.\n"
-            "`/shop_notify` — Open notification settings (default OFF).\n"
+            "`/accounts` — Manage accounts and all-account channel notifications.\n"
             "`/logout account` — Remove one account (does not revoke Riot sessions).",
             inline=False,
         )

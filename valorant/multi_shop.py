@@ -33,6 +33,10 @@ class MultiShopService(ShopService):
         if value is None:
             return {"version": 2, "accounts": {}, "notify": False, "states": {}}
         if value.get("version") == 2:
+            # Old DM consent never authorizes publishing shops to a channel.
+            if value.get("notify") and not value.get("notify_target"):
+                value["notify"] = False
+                await self.vault.put(owner, value)
             return value
         if "puuid" not in value:
             raise ShopError("Stored account needs attention. Contact the bot owner.")
@@ -162,10 +166,24 @@ class MultiShopService(ShopService):
             data = await self._load(owner)
             return await self._shop(owner, data, self._select(data, account))
 
-    async def set_notifications(self, owner, enabled):
+    async def notification_target(self, owner):
+        self.check(owner)
+        async with self.owner_lock(owner):
+            return (await self._load(owner)).get("notify_target")
+
+    async def set_notifications(self, owner, enabled, target=None):
         self.check(owner)
         async with self.owner_lock(owner):
             data = await self._load(owner)
+            if enabled:
+                if not target or any(
+                    not isinstance(target.get(k), int) or target[k] <= 0
+                    for k in ("guild", "channel")
+                ):
+                    raise ShopError(
+                        "Enable notifications from the destination server channel."
+                    )
+                data["notify_target"] = dict(target)
             if enabled and not data["accounts"]:
                 raise ShopError("Use /login to add an account first.")
             if enabled and not data["notify"]:
@@ -225,7 +243,9 @@ class MultiShopService(ShopService):
             await self.vault.put(owner, data)
             if stores or warnings:
                 async with asyncio.timeout(60):
-                    delivered = await send(owner, stores, warnings)
+                    delivered = await send(
+                        owner, stores, warnings, data["notify_target"]
+                    )
                 if not delivered:
                     data["notify"] = False
                     await self.vault.put(owner, data)
