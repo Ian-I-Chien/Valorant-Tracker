@@ -12,9 +12,11 @@ This is independent of Henrik subscriptions and `/reg_val`.
   are summarized privately; a failed public send is never retried as another message.
 - Only `/accounts` manages accounts, removals and the all-account notification
   toggle. `/shop_notify` is removed. `/logout account` removes one account.
-- Enabling notifications chooses the invoking server channel and requires bot
-  send permissions. The panel displays the destination. "Move notifications to
-  this channel" explicitly updates it; merely opening the panel does not.
+- Manual shops and automatic notifications use the server's `/set_channel`
+  destination. The private panel displays it. There is no separate channel-move
+  button. Notification delivery resolves the current setting each time, so changing
+  `/set_channel` changes the destination without re-enabling. Missing configuration
+  or inaccessible channels never fall back to the invoking channel.
 - Notifications are OFF by default and cover all present/future login accounts.
   Old enabled DM preferences WITHOUT a saved channel are disabled on migration:
   private-message consent never authorizes publishing to a server channel.
@@ -30,7 +32,7 @@ This is independent of Henrik subscriptions and `/reg_val`.
 
 The first successfully observed shop establishes an expiry baseline; notifications
 start with a subsequent observed update. Enabling does not backfill today's store.
-New logins baseline automatically; re-enabling resets baselines. Moving the channel
+New logins baseline automatically; re-enabling resets baselines. Changing `/set_channel`
 while enabled keeps the current baselines. Manual `/shop` is independent.
 
 Checks run every minute with pacing between users. Exact reset-time delivery is not
@@ -44,7 +46,7 @@ The worker starts once on readiness and is cancelled when the bot closes.
 Existing `credentials(owner, encrypted)` records use the same encryption key. Legacy
 single-account records migrate lazily to version-2 encrypted bundles containing
 PUUID-keyed accounts, one notification toggle, a guild/channel destination and
-per-account scheduling state. Match tracking storage is untouched. Only one bot
+per-account scheduling state. Only shared guild settings are read for routing; match subscriptions are untouched. Only one bot
 process may own a vault.
 
 Claims are committed before sending (at most once). A crash, ambiguous HTTP failure
@@ -60,6 +62,6 @@ is kept for compatibility tests only; live registration uses MultiShopService.
 ## Verification
 
 Tests use temporary encrypted vaults and fake Riot/Discord responses. Validate real
-multi-account login, the combined card, channel selection/move, destination permission
+multi-account login, the combined card, `/set_channel` routing changes, destination permission
 loss and a real daily reset in TEST before product rollout. Never use production
 credentials or tracking storage for these tests.

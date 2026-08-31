@@ -401,11 +401,11 @@ message; `/shop account:...` selects one. There is no default account.
 `/logout account:...` removes one account.
 
 Use `/accounts` for private account management and the all-account notification
-toggle. Enable it in the server channel that should receive updates; the panel
-shows the destination and offers "Move notifications to this channel". All current
+toggle. The report destination is the server channel configured with `/set_channel`;
+the panel displays that channel. Both manual shops and automatic updates use it. All current
 and future login accounts are included. Notifications are text in that channel,
 not DMs, and start after the next observed store update. `/shop_notify` is removed.
-Old DM notification consent is disabled; re-enable in your chosen channel.
+Old DM notification consent is disabled; re-enable in `/accounts`.
 
 Authorization failures remain private in `/accounts`. Missing destinations or send
 permissions disable notifications instead of sending elsewhere. Match tracking

@@ -3,10 +3,19 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import discord
+import pytest
+import multi_shop_commands
 from discord.ext import commands
 
 from multi_shop_commands import install_multi_commands
 from shop_commands import display, shop_text
+
+
+@pytest.fixture(autouse=True)
+def configured_report_channel(monkeypatch):
+    monkeypatch.setattr(
+        multi_shop_commands, "get_notification_channel_id", AsyncMock(return_value="10")
+    )
 
 
 def fixture():
@@ -44,6 +53,18 @@ def fixture():
         followup=SimpleNamespace(send=AsyncMock()),
         edit_original_response=AsyncMock(),
     )
+    bot.report_channel = SimpleNamespace(
+        id=10,
+        guild=SimpleNamespace(
+            id=20, me=object(), fetch_member=AsyncMock(return_value=object())
+        ),
+        send=AsyncMock(),
+        permissions_for=lambda member: SimpleNamespace(
+            view_channel=True, send_messages=True
+        ),
+    )
+    bot.fetch_channel = AsyncMock(return_value=bot.report_channel)
+    i.channel.id = 99  # Invocation is deliberately not the configured report channel.
     return bot, service, i
 
 
@@ -56,8 +77,8 @@ def test_shop_all_continues_after_account_failure():
         ]
         await bot.tree.get_command("shop").callback(i)
         assert s.shop.await_count == 2
-        assert i.followup.send.await_count == 1
-        assert i.followup.send.call_args.kwargs["ephemeral"] is False
+        assert bot.report_channel.send.await_count == 1
+        assert "ephemeral" not in bot.report_channel.send.call_args.kwargs
         message = i.edit_original_response.call_args.kwargs["content"]
         assert "One#TAG" in message and "secret" not in message
         assert i.response.send_message.call_args.kwargs["ephemeral"] is True
@@ -159,8 +180,11 @@ def test_multiple_accounts_are_sent_in_one_combined_image(monkeypatch):
         monkeypatch.setattr(multi_shop_commands, "combined_shop_card", render)
         await bot.tree.get_command("shop").callback(i)
         assert len(render.call_args.args[0]) == 2
-        i.followup.send.assert_awaited_once()
-        assert i.followup.send.call_args.kwargs["file"].filename == "daily-stores.jpg"
+        bot.report_channel.send.assert_awaited_once()
+        assert (
+            bot.report_channel.send.call_args.kwargs["file"].filename
+            == "daily-stores.jpg"
+        )
         assert bot.tree.get_command("shop_notify") is None
 
     asyncio.run(run())
@@ -175,9 +199,9 @@ def test_failed_public_delivery_is_not_retried(monkeypatch):
         monkeypatch.setattr(
             multi_shop_commands, "combined_shop_card", AsyncMock(return_value=b"jpeg")
         )
-        i.followup.send.side_effect = RuntimeError("delivery failed")
+        bot.report_channel.send.side_effect = RuntimeError("delivery failed")
         await bot.tree.get_command("shop").callback(i, "one")
-        i.followup.send.assert_awaited_once()
+        bot.report_channel.send.assert_awaited_once()
         assert "failed" in i.edit_original_response.call_args.kwargs["content"]
 
     asyncio.run(run())
@@ -226,5 +250,39 @@ def test_notifications_use_saved_channel_never_dm():
         finally:
             bot.shop_notification_task.cancel()
             await asyncio.gather(bot.shop_notification_task, return_exceptions=True)
+
+    asyncio.run(run())
+
+
+def test_missing_set_channel_does_not_fall_back_to_invocation(monkeypatch):
+    async def run():
+        bot, s, i = fixture()
+        monkeypatch.setattr(
+            multi_shop_commands,
+            "get_notification_channel_id",
+            AsyncMock(return_value=None),
+        )
+        await bot.tree.get_command("shop").callback(i)
+        s.shop.assert_not_awaited()
+        bot.report_channel.send.assert_not_awaited()
+        assert "/set_channel" in i.edit_original_response.call_args.kwargs["content"]
+
+    asyncio.run(run())
+
+
+def test_enable_copy_is_short_and_uses_configured_channel():
+    async def run():
+        bot, s, i = fixture()
+        await bot.tree.get_command("accounts").callback(i)
+        view = i.edit_original_response.call_args.kwargs["view"]
+        assert not any("Move" in getattr(child, "label", "") for child in view.children)
+        await view.toggle.callback(i)
+        s.set_notifications.assert_awaited_once_with(
+            1, True, {"guild": 20, "channel": 10}
+        )
+        assert (
+            i.edit_original_response.call_args.kwargs["content"]
+            == "Notifications enabled in <#10>."
+        )
 
     asyncio.run(run())
