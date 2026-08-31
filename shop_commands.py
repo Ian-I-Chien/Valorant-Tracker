@@ -7,16 +7,16 @@ from io import BytesIO
 from pathlib import Path
 
 import discord
-from discord import app_commands
 
 from valorant.shop_service import (
     RiotStoreClient,
     ShopError,
-    ShopService,
     Vault,
     parse_allowed_users,
 )
 from valorant.shop_card import shop_card_png
+from valorant.multi_shop import MultiShopService
+from multi_shop_commands import install_multi_commands
 
 LOGGER = logging.getLogger(__name__)
 
@@ -180,7 +180,7 @@ def register_shop_commands(bot):
             "Shop disabled: configure a valid key file and '*' or 1-100 user IDs"
         )
         return
-    service = ShopService(vault, RiotStoreClient(), allowed)
+    service = MultiShopService(vault, RiotStoreClient(), allowed)
     initialized = False
     init_lock = asyncio.Lock()
 
@@ -200,7 +200,7 @@ def register_shop_commands(bot):
             await ready(interaction.user.id)
             current = await service.linked_account(interaction.user.id)
             status = (
-                f"Current: **{display(current)}** · Relinking replaces this account.\n\n"
+                "Existing accounts are kept. Re-login updates only the same Riot account.\n\n"
                 if current
                 else ""
             )
@@ -225,29 +225,4 @@ def register_shop_commands(bot):
                     "Shop setup failed. Contact the bot owner.", ephemeral=True
                 )
 
-    @bot.tree.command(
-        name="shop",
-        description="Share your linked account's daily shop in this channel",
-    )
-    async def shop(interaction: discord.Interaction):
-        async def operation():
-            await ready(interaction.user.id)
-            return await service.shop(interaction.user.id)
-
-        await private_result(interaction, operation, public_shop=True)
-
-    @bot.tree.command(
-        name="logout",
-        description="Delete your stored shop credentials and private cache",
-    )
-    async def logout(interaction: discord.Interaction):
-        async def operation():
-            await ready(interaction.user.id)
-            await service.logout(interaction.user.id)
-
-        await private_result(
-            interaction,
-            operation,
-            "Shop account unlinked; local credentials and cache deleted.\n"
-            "-# Riot sessions and external backups are not revoked or deleted.",
-        )
+    install_multi_commands(bot, service, ready, display, shop_text, shop_card_png)

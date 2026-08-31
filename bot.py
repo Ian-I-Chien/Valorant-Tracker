@@ -1,4 +1,6 @@
 import os
+import asyncio
+from contextlib import suppress
 import logging
 import io
 
@@ -36,6 +38,14 @@ intents.message_content = True
 
 
 class ValorantTrackerBot(commands.Bot):
+    async def close(self):
+        worker = getattr(self, "shop_notification_task", None)
+        if worker is not None:
+            worker.cancel()
+            with suppress(asyncio.CancelledError):
+                await worker
+        await super().close()
+
     async def setup_hook(self) -> None:
         migration = await migrate_legacy_json()
         if migration.backup_path:
