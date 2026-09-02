@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import discord
 import pytest
 import multi_shop_commands
+import shop_notifications
 from discord.ext import commands
 
 from multi_shop_commands import install_multi_commands
@@ -13,9 +14,9 @@ from shop_commands import display, shop_text
 
 @pytest.fixture(autouse=True)
 def configured_report_channel(monkeypatch):
-    monkeypatch.setattr(
-        multi_shop_commands, "get_notification_channel_id", AsyncMock(return_value="10")
-    )
+    lookup = AsyncMock(return_value="10")
+    monkeypatch.setattr(multi_shop_commands, "get_notification_channel_id", lookup)
+    monkeypatch.setattr(shop_notifications, "get_notification_channel_id", lookup)
 
 
 def fixture():
@@ -257,10 +258,12 @@ def test_notifications_use_saved_channel_never_dm():
 def test_missing_set_channel_does_not_fall_back_to_invocation(monkeypatch):
     async def run():
         bot, s, i = fixture()
+        unavailable = AsyncMock(return_value=None)
         monkeypatch.setattr(
-            multi_shop_commands,
-            "get_notification_channel_id",
-            AsyncMock(return_value=None),
+            multi_shop_commands, "get_notification_channel_id", unavailable
+        )
+        monkeypatch.setattr(
+            shop_notifications, "get_notification_channel_id", unavailable
         )
         await bot.tree.get_command("shop").callback(i)
         s.shop.assert_not_awaited()
