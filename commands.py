@@ -6,7 +6,7 @@ from typing import Optional
 
 import discord
 from database.storage_sqlite import UserSQLiteDB
-from valorant.match import Match
+from userdb_coordination import get_userdb_lock
 from valorant.player import ValorantPlayer
 from valorant.player_info import PlayerInfoCardRenderer, build_player_info
 from valorant.prediction import (
@@ -17,21 +17,6 @@ from valorant.prediction import (
 from utils import parse_player_name
 
 LOGGER = logging.getLogger(__name__)
-
-# Keep polling, registration, and deletion ordered within this bot process.
-_userdb_lock: Optional[asyncio.Lock] = None
-
-
-@dataclass(frozen=True)
-class PollingMatchResult:
-    embed: Optional[discord.Embed]
-    image: Optional[bytes]
-    server_id: str
-    dc_id: str
-    valorant_puuid: str
-    match_id: str
-    subscription_id: int
-    previous_match_id: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -71,155 +56,6 @@ async def resolve_player_query(
         riot_id=f"{player.player_name}#{player.player_tag}",
         puuid=str(account["puuid"]),
     )
-
-
-def get_userdb_lock() -> asyncio.Lock:
-    """
-    Lazily initialize and return the global user DB lock.
-
-    The lock is created the first time it is needed, on the active
-    event loop. This avoids "Future attached to a different loop"
-    errors caused by creating a Lock at import time.
-    """
-    global _userdb_lock
-    if _userdb_lock is None:
-        _userdb_lock = asyncio.Lock()
-    return _userdb_lock
-
-
-async def handle_polling_matches(
-    interaction: Optional[discord.Interaction] = None,
-) -> Optional[PollingMatchResult]:
-    """
-    Background polling logic:
-    - Load all subscriptions from SQLite
-    - For each Valorant account, fetch the last match ID from API
-    - Compare with last_polled_match_id stored on the subscription
-    - If it is a new match, fetch and format the match data
-    - Return delivery metadata without updating last_polled_match_id
-    """
-    lock = get_userdb_lock()
-
-    # Avoid racing a poll with registration or deletion in this process.
-    async with lock:
-        try:
-            async with UserSQLiteDB() as user_model:
-                subscriptions = await user_model.list_subscriptions()
-                LOGGER.debug("Loaded %s subscriptions", len(subscriptions))
-
-                for subscription in subscriptions:
-                    try:
-                        account_str = subscription.valorant_account
-                        player_name, player_tag = account_str.split("#")
-                        valorant_puuid = subscription.valorant_puuid
-                        dc_id = subscription.discord_user_id
-
-                        # Read the last processed match ID for this account
-                        last_polled_match_id = subscription.last_polled_match_id
-
-                        match = Match(player_name, player_tag)
-                        last_match_id = await match.get_last_match_id()
-
-                        # No matches found or failed to fetch
-                        if not last_match_id:
-                            continue
-
-                        # A newly registered account has no checkpoint yet.
-                        # Treat its current latest match as the baseline so
-                        # matches completed before registration are not sent
-                        # as new notifications.
-                        if last_polled_match_id is None:
-                            initialized = await user_model.update_last_polled_match(
-                                subscription_id=subscription.id,
-                                expected_match_id=None,
-                                match_id=last_match_id,
-                            )
-                            if not initialized:
-                                LOGGER.warning(
-                                    "Could not initialize checkpoint for %s; "
-                                    "subscription changed",
-                                    account_str,
-                                )
-                            LOGGER.debug(
-                                "Initialized checkpoint %s for %s",
-                                last_match_id,
-                                account_str,
-                            )
-                            continue
-
-                        # Skip if this match has already been processed
-                        if last_polled_match_id == last_match_id:
-                            LOGGER.debug(
-                                "Match %s already processed for %s",
-                                last_match_id,
-                                account_str,
-                            )
-                            continue
-
-                        LOGGER.debug(
-                            "Fetching new match %s for %s",
-                            last_match_id,
-                            player_name,
-                        )
-
-                        # Fetch match data from Riot API
-                        match_data = await match.fetch_match()
-                        match.last_match_data = match_data
-
-                        LOGGER.debug(
-                            "Prepared new match %s for %s",
-                            last_match_id,
-                            account_str,
-                        )
-
-                        # Prefer the graphical card. If rendering or a remote asset
-                        # fails, preserve delivery by falling back to the text embed.
-                        try:
-                            image = await match.build_match_card()
-                            embed = None
-                        except Exception:
-                            LOGGER.exception(
-                                "Could not render match card %s; using text fallback",
-                                last_match_id,
-                            )
-                            image = None
-                            embed = await match.build_embed()
-
-                        # Delivery must succeed before this match is checkpointed.
-                        return PollingMatchResult(
-                            embed=embed,
-                            image=image,
-                            server_id=subscription.server_id,
-                            dc_id=dc_id,
-                            valorant_puuid=valorant_puuid,
-                            match_id=last_match_id,
-                            subscription_id=subscription.id,
-                            previous_match_id=last_polled_match_id,
-                        )
-
-                    except Exception:
-                        LOGGER.exception(
-                            "Error processing account %s",
-                            subscription.valorant_account,
-                        )
-
-        except Exception:
-            LOGGER.exception("Critical error while polling matches")
-
-        # No new matches found
-        return None
-
-
-async def mark_match_delivered(result: PollingMatchResult) -> bool:
-    """Persist a match checkpoint only after Discord delivery succeeds."""
-    lock = get_userdb_lock()
-    async with lock:
-        async with UserSQLiteDB() as user_model:
-            return await user_model.update_last_polled_match(
-                subscription_id=result.subscription_id,
-                expected_match_id=result.previous_match_id,
-                match_id=result.match_id,
-            )
 
 
 async def get_notification_channel_id(server_id: str) -> Optional[str]:

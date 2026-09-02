@@ -11,11 +11,10 @@ from utils import parse_player_name
 from discord.ext import commands, tasks
 from database.storage_sqlite import migrate_legacy_json
 from help_command import show_help
+from match_polling import handle_polling_matches, mark_match_delivered
 from last_match_command import show_last_match
 from commands import (
     get_notification_channel_id,
-    handle_polling_matches,
-    mark_match_delivered,
     delete_valorant_account,
     registered_with_valorant_account,
     set_notification_channel,
