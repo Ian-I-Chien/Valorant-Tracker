@@ -8,6 +8,10 @@ from io import BytesIO
 import discord
 from discord import app_commands
 from commands import get_notification_channel_id
+from shop_notifications import (
+    install_shop_notification_worker,
+    resolve_report_channel,
+)
 from valorant.combined_shop_card import combined_shop_card
 
 LOGGER = logging.getLogger(__name__)
@@ -15,27 +19,7 @@ LOGGER = logging.getLogger(__name__)
 
 def install_multi_commands(bot, service, ready, display, shop_text, shop_card_png):
     async def report_channel(guild_id, owner):
-        channel_id = await get_notification_channel_id(str(guild_id))
-        if not channel_id:
-            raise ValueError("Report channel is not configured")
-        channel = await bot.fetch_channel(int(channel_id))
-        if not getattr(channel, "guild", None) or channel.guild.id != guild_id:
-            raise ValueError("Invalid report channel")
-        member = await channel.guild.fetch_member(owner)
-        me = channel.guild.me or await channel.guild.fetch_member(bot.user.id)
-        permissions = channel.permissions_for(me)
-        can_send = (
-            permissions.send_messages_in_threads
-            if isinstance(channel, discord.Thread)
-            else permissions.send_messages
-        )
-        if (
-            not channel.permissions_for(member).view_channel
-            or not permissions.view_channel
-            or not can_send
-        ):
-            raise ValueError("Report channel is inaccessible")
-        return channel
+        return await resolve_report_channel(bot, guild_id, owner)
 
     async def choices(interaction, current):
         try:
@@ -305,54 +289,4 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
     async def accounts(interaction: discord.Interaction):
         await panel(interaction)
 
-    async def send_notifications(owner, stores, warnings, target):
-        if not stores:
-            return True  # Authorization failures are shown privately in /accounts.
-        try:
-            channel = await report_channel(target["guild"], owner)
-            sections = [shop_text(store) for store in stores]
-            chunk = f"Shop update for <@{owner}>\n"
-            for section in sections:
-                if len(chunk) + len(section) + 2 > 1900:
-                    await channel.send(
-                        chunk, allowed_mentions=discord.AllowedMentions.none()
-                    )
-                    chunk = ""
-                chunk += ("\n\n" if chunk else "") + section
-            if chunk:
-                await channel.send(
-                    chunk, allowed_mentions=discord.AllowedMentions.none()
-                )
-            return True
-        except (discord.Forbidden, discord.NotFound, ValueError):
-            return False
-        except Exception:
-            LOGGER.warning("Shop notification delivery unavailable; details suppressed")
-            return True
-
-    async def worker():
-        await bot.wait_until_ready()
-        while not bot.is_closed():
-            try:
-                # Initialization must not require a particular allowed owner.
-                await service.vault.initialize()
-                for owner in await service.owners():
-                    try:
-                        await service.notify_owner(owner, send_notifications)
-                    except Exception:
-                        LOGGER.warning(
-                            "Shop notification check failed; details suppressed"
-                        )
-                    await asyncio.sleep(1)
-            except Exception:
-                LOGGER.warning(
-                    "Shop notification worker unavailable; details suppressed"
-                )
-            await asyncio.sleep(60)
-
-    async def start_worker():
-        task = getattr(bot, "shop_notification_task", None)
-        if task is None or task.done():
-            bot.shop_notification_task = asyncio.create_task(worker())
-
-    bot.add_listener(start_worker, "on_ready")
+    install_shop_notification_worker(bot, service, shop_text)
