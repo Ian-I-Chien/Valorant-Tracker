@@ -1,6 +1,7 @@
 import asyncio
 
-import commands
+import match_polling
+import userdb_coordination
 import discord
 from database.storage_sqlite import SubscriptionRecord
 
@@ -49,11 +50,11 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         async def fetch_match(self):
             raise AssertionError("existing match data should not be fetched")
 
-    monkeypatch.setattr(commands, "UserSQLiteDB", FakeUserSQLiteDB)
-    monkeypatch.setattr(commands, "Match", FakeMatch)
-    commands._userdb_lock = None
+    monkeypatch.setattr(match_polling, "UserSQLiteDB", FakeUserSQLiteDB)
+    monkeypatch.setattr(match_polling, "Match", FakeMatch)
+    userdb_coordination._userdb_lock = None
 
-    result = asyncio.run(commands.handle_polling_matches())
+    result = asyncio.run(match_polling.handle_polling_matches())
 
     assert result is None
     assert FakeUserSQLiteDB.checkpoint == (1, None, "existing-match")
@@ -81,9 +82,9 @@ def _configure_new_match(monkeypatch, match_class):
         async def list_subscriptions(self):
             return subscriptions
 
-    monkeypatch.setattr(commands, "UserSQLiteDB", FakeUserSQLiteDB)
-    monkeypatch.setattr(commands, "Match", match_class)
-    commands._userdb_lock = None
+    monkeypatch.setattr(match_polling, "UserSQLiteDB", FakeUserSQLiteDB)
+    monkeypatch.setattr(match_polling, "Match", match_class)
+    userdb_coordination._userdb_lock = None
 
 
 def test_new_match_prefers_graphical_card(monkeypatch):
@@ -106,7 +107,7 @@ def test_new_match_prefers_graphical_card(monkeypatch):
             )
 
     _configure_new_match(monkeypatch, FakeMatch)
-    result = asyncio.run(commands.handle_polling_matches())
+    result = asyncio.run(match_polling.handle_polling_matches())
 
     assert result is not None
     assert result.image == b"png-data"
@@ -133,7 +134,7 @@ def test_new_match_falls_back_to_text_embed(monkeypatch):
             return fallback
 
     _configure_new_match(monkeypatch, FakeMatch)
-    result = asyncio.run(commands.handle_polling_matches())
+    result = asyncio.run(match_polling.handle_polling_matches())
 
     assert result is not None
     assert result.image is None
