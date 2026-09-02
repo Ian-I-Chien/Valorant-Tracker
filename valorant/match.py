@@ -8,6 +8,7 @@ from .api import API_URLS, fetch_json
 from database.storage_sqlite import UserSQLiteDB
 from utils import fix_isoformat
 from valorant.match_card import MatchCardData, MatchCardPlayer, MatchCardRenderer
+from valorant.match_statistics import calculate_kast
 
 
 LOGGER = logging.getLogger(__name__)
@@ -67,108 +68,12 @@ class Match:
         return melee_killers, melee_victims
 
     def calculate_kast(self, match_data: dict = None) -> Optional[dict]:
-        """
-        Calculate KAST from Henrikdev API v4_match.
-
-        Args:
-            match_data (dict): match data
-
-        Returns:
-            dict: {player_puuid: kast_percentage}
-        """
+        """Calculate per-player KAST while preserving the public Match API."""
         if match_data is None:
             if self.last_match_data is None:
                 raise ValueError("calculate_kast match_data is null.")
             match_data = self.last_match_data
-
-        data = match_data.get("data", None)
-        if data is None:
-            raise ValueError("calculate_kast data is null.")
-
-        players: list = data.get("players", None)
-        if players is None:
-            raise ValueError("calculate_kast players is null.")
-
-        rounds: list = data.get("rounds", None)
-        if rounds is None:
-            raise ValueError("calculate_kast rounds is null.")
-
-        kills: list = data.get("kills", None)
-        if kills is None:
-            raise ValueError("calculate_kast kills is null.")
-
-        # Initialize per-player, per-round performance structure
-        players_rounds_performance = {}
-        for player in players:
-            puuid: str = player["puuid"]
-            players_rounds_performance[puuid] = []
-            for _ in range(len(rounds)):
-                players_rounds_performance[puuid].append(
-                    {
-                        "kill": 0,
-                        "assistant": 0,
-                        "death": 0,
-                        "trade": 0,
-                    }
-                )
-
-        # Sort kills by time in match to handle trades correctly
-        kills = sorted(kills, key=lambda x: x["time_in_match_in_ms"])
-        killer_list = {}  # track who killed whom and when in the same round
-        round_temp = -1
-
-        for kill in kills:
-            round_index: int = kill["round"]
-            time_in_round_in_ms: int = int(kill["time_in_round_in_ms"])
-            killer: str = kill["killer"]["puuid"]
-            victim: str = kill["victim"]["puuid"]
-            assistants: list = kill["assistants"]
-
-            # Reset killer list when round changes
-            if round_temp != round_index:
-                round_temp = round_index
-                killer_list.clear()
-
-            # Record death
-            players_rounds_performance[victim][round_index]["death"] += 1
-
-            # Check for trade kills within 3 seconds
-            if victim in killer_list:
-                for victim_of_killer in killer_list[victim]:
-                    if (time_in_round_in_ms - victim_of_killer["time"]) <= 3000:
-                        players_rounds_performance[victim_of_killer["victim"]][
-                            round_index
-                        ]["trade"] += 1
-
-            # Record kill
-            players_rounds_performance[killer][round_index]["kill"] += 1
-            if killer not in killer_list:
-                killer_list[killer] = []
-            killer_list[killer].append({"victim": victim, "time": time_in_round_in_ms})
-
-            # Record assists
-            for assistant in assistants:
-                assistanter: str = assistant["puuid"]
-                players_rounds_performance[assistanter][round_index]["assistant"] += 1
-
-        # Calculate KAST for each player
-        result = {}
-        for player_uuid, rounds_info in players_rounds_performance.items():
-            kast_rounds = 0
-            for round_index in range(len(rounds)):
-                one_round_data = rounds_info[round_index]
-                got_kill: int = one_round_data["kill"]
-                got_death: int = one_round_data["death"]
-                got_assistant: int = one_round_data["assistant"]
-                got_trade: int = one_round_data["trade"]
-
-                if got_kill > 0 or got_assistant > 0 or got_trade > 0 or got_death == 0:
-                    kast_rounds += 1
-
-            player_kast = (kast_rounds / len(rounds)) * 100
-            result[player_uuid] = player_kast
-
-        return result
+        return calculate_kast(match_data)
 
     async def build_embed(self) -> discord.Embed:
         """
