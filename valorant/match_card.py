@@ -147,6 +147,16 @@ def _build_party_styles(
     return styles
 
 
+def _format_rr(queue_name: str, player: MatchCardPlayer) -> str:
+    if (
+        queue_name.casefold() != "competitive"
+        or player.rank_rating is None
+        or player.rr_change is None
+    ):
+        return ""
+    return f"  RR {player.rank_rating} ({player.rr_change:+d})"
+
+
 class MatchCardRenderer:
     def __init__(self, assets: Optional[AssetCache] = None):
         self.assets = assets or AssetCache()
@@ -268,9 +278,7 @@ class MatchCardRenderer:
                         fill="#0f1923",
                     )
 
-                rr = ""
-                if player.rank_rating is not None and player.rr_change is not None:
-                    rr = f"  RR {player.rank_rating} ({player.rr_change:+d})"
+                rr = _format_rr(data.queue_name, player)
                 stats = (
                     f"{player.kills}/{player.deaths}/{player.assists}   "
                     f"ACS {player.acs}   HS {player.headshot_percentage:.0f}%   "

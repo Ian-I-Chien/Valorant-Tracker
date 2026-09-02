@@ -1,4 +1,4 @@
-from valorant.match_card import MatchCardPlayer, _build_party_styles
+from valorant.match_card import MatchCardPlayer, _build_party_styles, _format_rr
 
 
 def _player(team_id: str, party_id: str) -> MatchCardPlayer:
@@ -45,3 +45,12 @@ def test_party_labels_are_numbered_independently_per_team():
     assert styles[("Blue", "blue-duo")][0] == "DUO B"
     assert styles[("Red", "red-duo")][0] == "DUO A"
     assert ("Red", "red-solo-1") not in styles
+
+
+def test_rr_is_only_shown_for_competitive_queue():
+    player = MatchCardPlayer(
+        **{**_player("Blue", "solo").__dict__, "rank_rating": 73, "rr_change": 18}
+    )
+
+    assert _format_rr("Competitive", player) == "  RR 73 (+18)"
+    assert _format_rr("Unrated", player) == ""
