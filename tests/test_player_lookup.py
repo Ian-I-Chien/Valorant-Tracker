@@ -67,8 +67,11 @@ def test_unregistered_short_name_is_not_sent_to_account_api(monkeypatch):
 
 
 class FakeResponse:
-    async def defer(self):
-        return None
+    def __init__(self):
+        self.deferred_with = None
+
+    async def defer(self, **kwargs):
+        self.deferred_with = kwargs
 
 
 class FakeInteraction:
@@ -106,6 +109,7 @@ def test_predict_reports_api_failure_after_defer(monkeypatch):
 
     asyncio.run(commands.predict_registered_player(interaction, "Player#TAG"))
 
+    assert interaction.response.deferred_with == {"ephemeral": True}
     assert interaction.edits == [
         {
             "content": "The Valorant API is temporarily unavailable. Please try again later."
