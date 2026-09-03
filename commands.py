@@ -73,7 +73,7 @@ async def predict_registered_player(
             "This command can only be used in a Discord server.", ephemeral=True
         )
         return
-    await interaction.response.defer()
+    await interaction.response.defer(ephemeral=True)
     try:
         player = await resolve_player_query(str(interaction.guild.id), account_query)
     except Exception:
