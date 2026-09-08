@@ -1,5 +1,6 @@
 import asyncio
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import commands
 
@@ -78,6 +79,7 @@ class FakeInteraction:
     def __init__(self):
         self.guild = SimpleNamespace(id="guild-1")
         self.response = FakeResponse()
+        self.followup = SimpleNamespace(send=AsyncMock())
         self.edits = []
 
     async def edit_original_response(self, **kwargs):
@@ -115,3 +117,41 @@ def test_predict_reports_api_failure_after_defer(monkeypatch):
             "content": "The Valorant API is temporarily unavailable. Please try again later."
         }
     ]
+
+
+def test_predict_success_is_shared_publicly(monkeypatch):
+    player = commands.ResolvedPlayer("Player#TAG", "puuid")
+
+    async def resolve(server_id, account_query):
+        return player
+
+    class FakeMatch:
+        def __init__(self, name, tag):
+            pass
+
+        async def fetch_recent_matches(self, size):
+            return {"data": [{}]}
+
+    result = SimpleNamespace(
+        riot_id="Player#TAG", win_probability=55, confidence="Medium", match_count=10
+    )
+    monkeypatch.setattr(commands, "resolve_player_query", resolve)
+    monkeypatch.setattr(commands, "Match", FakeMatch)
+    monkeypatch.setattr(commands, "extract_recent_performances", lambda data, puuid: [])
+    monkeypatch.setattr(commands, "predict_next_match", lambda riot_id, data: result)
+    monkeypatch.setattr(
+        commands.PredictionCardRenderer, "render", lambda self, value: b"png"
+    )
+    interaction = FakeInteraction()
+
+    asyncio.run(commands.predict_registered_player(interaction, "Player#TAG"))
+
+    assert interaction.response.deferred_with == {"ephemeral": True}
+    assert interaction.followup.send.await_args.kwargs["ephemeral"] is False
+    assert (
+        interaction.followup.send.await_args.kwargs["file"].filename
+        == "prematch-prediction.png"
+    )
+    assert (
+        interaction.edits[-1]["content"] == "Prediction ready. Shared in this channel."
+    )

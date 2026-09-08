@@ -7,6 +7,7 @@ from typing import Optional
 import discord
 from database.storage_sqlite import UserSQLiteDB
 from userdb_coordination import get_userdb_lock
+from valorant.match import Match
 from valorant.player import ValorantPlayer
 from valorant.player_info import PlayerInfoCardRenderer, build_player_info
 from valorant.prediction import (
@@ -109,19 +110,32 @@ async def predict_registered_player(
         return
     try:
         image = PredictionCardRenderer().render(result)
-        await interaction.edit_original_response(
-            attachments=[
-                discord.File(io.BytesIO(image), filename="prematch-prediction.png")
-            ]
-        )
+        public_response = {
+            "file": discord.File(io.BytesIO(image), filename="prematch-prediction.png")
+        }
     except Exception:
         LOGGER.exception("Could not render prediction card")
-        await interaction.edit_original_response(
-            content=(
+        public_response = {
+            "content": (
                 f"**{result.riot_id} — next match prediction**\n"
-                f"Win chance: **{result.win_probability}%** ({result.confidence.lower()} confidence)\n"
+                f"Win chance: **{result.win_probability}%** "
+                f"({result.confidence.lower()} confidence)\n"
                 f"Based on {result.match_count} matches in the last 30 days."
             )
+        }
+    try:
+        await interaction.followup.send(
+            **public_response,
+            ephemeral=False,
+            allowed_mentions=discord.AllowedMentions.none(),
+        )
+        await interaction.edit_original_response(
+            content="Prediction ready. Shared in this channel."
+        )
+    except Exception:
+        LOGGER.exception("Could not share prediction result")
+        await interaction.edit_original_response(
+            content="Could not share the prediction. Please check my channel permissions."
         )
 
 
