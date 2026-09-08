@@ -10,9 +10,11 @@ from discord import app_commands
 from commands import get_notification_channel_id
 from shop_notifications import (
     install_shop_notification_worker,
+    notification_sender,
     resolve_report_channel,
 )
 from valorant.combined_shop_card import combined_shop_card
+from valorant.shop_service import ShopError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -265,6 +267,12 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
                 if channel_id
                 else "Report channel: not configured; use /set_channel"
             )
+            last_notification = await service.last_notification(interaction.user.id)
+            lines.append(
+                f"Last shop notification: <t:{last_notification}:R>"
+                if last_notification
+                else "Last shop notification: none yet"
+            )
             lines.extend(
                 display(a["label"])
                 + (" - login required" if a["expired"] else " - linked")
@@ -281,6 +289,26 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
             await interaction.edit_original_response(
                 content="Could not load accounts. Please try again later."
             )
+
+    @bot.tree.command(
+        name="shop_resend",
+        description="Resend all linked daily shops to the configured report channel",
+    )
+    async def shop_resend(interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        try:
+            await ready(interaction.user.id)
+            count = await service.resend(
+                interaction.user.id, notification_sender(bot, shop_text)
+            )
+            await interaction.edit_original_response(
+                content=f"Resent {count} shop account(s) to the report channel."
+            )
+        except Exception as exc:
+            message = (
+                str(exc) if isinstance(exc, ShopError) else "Could not resend shops."
+            )
+            await interaction.edit_original_response(content=message)
 
     @bot.tree.command(
         name="accounts",

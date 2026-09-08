@@ -192,6 +192,38 @@ class MultiShopService(ShopService):
             data["notify"] = enabled
             await self.vault.put(owner, data)
 
+    async def last_notification(self, owner):
+        self.check(owner)
+        async with self.owner_lock(owner):
+            return (await self._load(owner)).get("last_notification_at")
+
+    async def resend(self, owner, send):
+        self.check(owner)
+        async with self.owner_lock(owner):
+            data = await self._load(owner)
+            if not data["notify"] or not data.get("notify_target"):
+                raise ShopError("Enable notifications in /accounts first.")
+            stores, warnings = [], []
+            for puuid in data["accounts"]:
+                try:
+                    stores.append(await self._shop(owner, data, puuid))
+                except LoginExpired:
+                    warnings.append(account_label(data["accounts"][puuid]))
+                except Exception:
+                    continue
+            if not stores:
+                raise ShopError("No shop is available to resend right now.")
+            delivered = await send(owner, stores, warnings, data["notify_target"])
+            if not delivered:
+                data["notify"] = False
+                await self.vault.put(owner, data)
+                raise ShopError(
+                    "The report channel is unavailable; notifications disabled."
+                )
+            data["last_notification_at"] = int(time.time())
+            await self.vault.put(owner, data)
+            return len(stores)
+
     async def owners(self):
         async with aiosqlite.connect(self.vault.path) as db:
             async with db.execute("SELECT owner FROM credentials") as cursor:
@@ -248,4 +280,7 @@ class MultiShopService(ShopService):
                     )
                 if not delivered:
                     data["notify"] = False
+                    await self.vault.put(owner, data)
+                else:
+                    data["last_notification_at"] = int(time.time())
                     await self.vault.put(owner, data)

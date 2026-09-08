@@ -35,6 +35,8 @@ def fixture():
         logout=AsyncMock(),
         set_notifications=AsyncMock(),
         notification_target=AsyncMock(return_value=None),
+        last_notification=AsyncMock(return_value=None),
+        resend=AsyncMock(return_value=2),
     )
     install_multi_commands(
         bot, service, AsyncMock(), display, shop_text, AsyncMock(return_value=b"png")
@@ -149,7 +151,7 @@ def test_feature_registration_and_help_with_shop_enabled(tmp_path, monkeypatch):
         bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
         register_shop_commands(bot)
         names = {c.name for c in bot.tree.get_commands()}
-        assert names == {"login", "shop", "logout", "accounts"}
+        assert names == {"login", "shop", "shop_resend", "logout", "accounts"}
         text = "\n".join(f.value for f in build_help_embed().fields)
         for name in names:
             assert "/" + name in text
@@ -286,6 +288,19 @@ def test_enable_copy_is_short_and_uses_configured_channel():
         assert (
             i.edit_original_response.call_args.kwargs["content"]
             == "Notifications enabled in <#10>."
+        )
+
+    asyncio.run(run())
+
+
+def test_shop_resend_reports_one_private_result():
+    async def run():
+        bot, service, interaction = fixture()
+        await bot.tree.get_command("shop_resend").callback(interaction)
+        service.resend.assert_awaited_once()
+        assert interaction.response.defer.call_args.kwargs["ephemeral"] is True
+        assert interaction.edit_original_response.call_args.kwargs["content"] == (
+            "Resent 2 shop account(s) to the report channel."
         )
 
     asyncio.run(run())
