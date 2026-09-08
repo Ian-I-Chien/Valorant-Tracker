@@ -11,6 +11,7 @@ from utils import parse_player_name
 from discord.ext import commands, tasks
 from database.storage_sqlite import migrate_legacy_json
 from help_command import show_help
+from health_command import show_health
 from match_polling import handle_polling_matches, mark_match_delivered
 from last_match_command import show_last_match
 from commands import (
@@ -172,6 +173,13 @@ async def last_match(interaction: discord.Interaction, id: str):
 @app_commands.describe(username="Registered Valorant username or name#tag")
 async def info(interaction: discord.Interaction, username: str):
     await show_registered_player_info(interaction, username)
+
+
+@bot.tree.command(name="health", description="Show private bot health checks")
+@app_commands.default_permissions(manage_guild=True)
+@app_commands.checks.has_permissions(manage_guild=True)
+async def health(interaction: discord.Interaction):
+    await show_health(interaction, bot, polling_matches)
 
 
 @bot.tree.command(

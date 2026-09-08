@@ -248,3 +248,17 @@ def test_old_dm_consent_cannot_become_public_channel_consent(tmp_path):
         assert await s.notification_target(1) == {"guild": 20, "channel": 11}
 
     asyncio.run(run())
+
+
+def test_credential_health_counts_expired_logins(tmp_path):
+    async def run():
+        service, client = await setup(tmp_path)
+        await link(service, client)
+        await link(service, client, P2)
+        data = await service.vault.get(1)
+        data["accounts"][P2]["auth_required"] = True
+        await service.vault.put(1, data)
+
+        assert await service.credential_health() == {"active": 1, "expired": 1}
+
+    asyncio.run(run())

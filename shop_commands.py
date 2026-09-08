@@ -8,6 +8,8 @@ from pathlib import Path
 
 import discord
 
+from health_command import enforce_private_file
+
 from valorant.shop_service import (
     RiotStoreClient,
     ShopError,
@@ -173,7 +175,9 @@ def register_shop_commands(bot):
     # Missing/invalid settings fail closed. Do not create an unencrypted vault.
     try:
         allowed = parse_allowed_users(os.environ["SHOP_ALLOWED_USER_IDS"])
-        key = Path(os.environ["SHOP_KEY_FILE"]).read_bytes().strip()
+        key_path = Path(os.environ["SHOP_KEY_FILE"])
+        enforce_private_file(key_path)
+        key = key_path.read_bytes().strip()
         vault = Vault(os.getenv("SHOP_DB_PATH", "private-shop/credentials.db"), key)
     except Exception:
         LOGGER.error(
@@ -181,6 +185,7 @@ def register_shop_commands(bot):
         )
         return
     service = MultiShopService(vault, RiotStoreClient(), allowed)
+    bot.shop_service = service
     initialized = False
     init_lock = asyncio.Lock()
 
@@ -190,6 +195,7 @@ def register_shop_commands(bot):
         async with init_lock:
             if not initialized:
                 await vault.initialize()
+                enforce_private_file(vault.path)
                 initialized = True
 
     @bot.tree.command(

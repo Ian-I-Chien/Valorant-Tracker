@@ -49,6 +49,7 @@ def build_help_embed() -> discord.Embed:
             "channel (requires Manage Server).\n"
             "`/show_config` — View the current notification channel "
             "(available to everyone).\n"
+            "`/health` — Check bot services (requires Manage Server).\n"
             "Each server has its own notification channel and registrations."
         ),
         inline=False,

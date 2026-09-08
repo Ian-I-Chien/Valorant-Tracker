@@ -192,6 +192,18 @@ class MultiShopService(ShopService):
             data["notify"] = enabled
             await self.vault.put(owner, data)
 
+    async def credential_health(self):
+        active = expired = 0
+        for owner in await self.owners():
+            async with self.owner_lock(owner):
+                data = await self._load(owner)
+                for account in data["accounts"].values():
+                    if account.get("auth_required"):
+                        expired += 1
+                    else:
+                        active += 1
+        return {"active": active, "expired": expired}
+
     async def owners(self):
         async with aiosqlite.connect(self.vault.path) as db:
             async with db.execute("SELECT owner FROM credentials") as cursor:
