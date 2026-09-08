@@ -369,6 +369,11 @@ class Match:
             queue_name=data["metadata"]["queue"]["name"],
             score=f"{blue_wins} : {red_wins}",
             result=result,
+            winning_team_id=(
+                "Blue"
+                if blue_wins > red_wins
+                else "Red" if red_wins > blue_wins else None
+            ),
             played_at=started_at.astimezone().strftime("%Y/%m/%d %H:%M"),
             players=tuple(card_players),
         )

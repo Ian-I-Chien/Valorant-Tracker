@@ -49,6 +49,7 @@ class MatchCardData:
     queue_name: str
     score: str
     result: str
+    winning_team_id: Optional[str]
     played_at: str
     players: tuple[MatchCardPlayer, ...]
 
@@ -199,8 +200,11 @@ class MatchCardRenderer:
             )
             card.paste(background, (0, 0))
 
+        team_color = {"Blue": "#4ea6ff", "Red": "#ff4655"}.get(
+            data.winning_team_id, "#75808a"
+        )
         draw.rectangle(
-            (0, HEADER_HEIGHT - 5, CARD_WIDTH, HEADER_HEIGHT), fill="#ff4655"
+            (0, HEADER_HEIGHT - 5, CARD_WIDTH, HEADER_HEIGHT), fill=team_color
         )
         draw.text((46, 38), data.map_name.upper(), font=_font(52, True), fill="white")
         draw.text(
@@ -212,7 +216,7 @@ class MatchCardRenderer:
         result_color = "#72e5ad" if "WIN" in data.result.upper() else "#ff6673"
         score_box = (885, 42, 1150, 174)
         draw.rounded_rectangle(
-            score_box, radius=18, fill="#101c27", outline=result_color, width=3
+            score_box, radius=18, fill="#101c27", outline=team_color, width=3
         )
         draw.text(
             (1018, 60), data.score, anchor="ma", font=_font(44, True), fill="white"
