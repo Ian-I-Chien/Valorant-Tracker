@@ -252,6 +252,7 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
                 "Notifications: " + ("ON (all accounts)" if enabled else "OFF"),
             ]
             target = await service.notification_target(interaction.user.id)
+            status = await service.notification_status(interaction.user.id)
             guild_id = (
                 target["guild"]
                 if enabled and target
@@ -265,6 +266,14 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
                 if channel_id
                 else "Report channel: not configured; use /set_channel"
             )
+            if status.get("last_check"):
+                lines.append(f"Last notification check: <t:{status['last_check']}:R>")
+            else:
+                lines.append("Last notification check: not run yet")
+            if status.get("last_error"):
+                lines.append(f"Notification status: {status['last_error']}")
+            elif status.get("last_success"):
+                lines.append("Notification status: healthy")
             lines.extend(
                 display(a["label"])
                 + (" - login required" if a["expired"] else " - linked")

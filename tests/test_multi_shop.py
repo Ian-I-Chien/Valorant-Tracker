@@ -248,3 +248,27 @@ def test_old_dm_consent_cannot_become_public_channel_consent(tmp_path):
         assert await s.notification_target(1) == {"guild": 20, "channel": 11}
 
     asyncio.run(run())
+
+
+def test_notification_status_records_success_and_failure(tmp_path):
+    async def run():
+        service, client = await setup(tmp_path)
+        await link(service, client)
+        await service.set_notifications(1, True, {"guild": 20, "channel": 10})
+
+        await service.notify_owner(1, AsyncMock())
+        healthy = await service.notification_status(1)
+        assert healthy["last_check"] > 0
+        assert healthy["last_success"] == healthy["last_check"]
+        assert "last_error" not in healthy
+
+        data = await service.vault.get(1)
+        data["states"][P1]["next"] = time.time() - 1
+        await service.vault.put(1, data)
+        client.fail.add(P1)
+        service.cache.clear()
+        await service.notify_owner(1, AsyncMock())
+        failed = await service.notification_status(1)
+        assert failed["last_error"] == "Shop check failed"
+
+    asyncio.run(run())

@@ -35,6 +35,7 @@ def fixture():
         logout=AsyncMock(),
         set_notifications=AsyncMock(),
         notification_target=AsyncMock(return_value=None),
+        notification_status=AsyncMock(return_value={}),
     )
     install_multi_commands(
         bot, service, AsyncMock(), display, shop_text, AsyncMock(return_value=b"png")
@@ -287,5 +288,22 @@ def test_enable_copy_is_short_and_uses_configured_channel():
             i.edit_original_response.call_args.kwargs["content"]
             == "Notifications enabled in <#10>."
         )
+
+    asyncio.run(run())
+
+
+def test_accounts_shows_notification_health():
+    async def run():
+        bot, service, interaction = fixture()
+        service.notification_status.return_value = {
+            "last_check": 1_700_000_000,
+            "last_success": 1_700_000_000,
+        }
+
+        await bot.tree.get_command("accounts").callback(interaction)
+
+        content = interaction.edit_original_response.call_args.kwargs["content"]
+        assert "Last notification check: <t:1700000000:R>" in content
+        assert "Notification status: healthy" in content
 
     asyncio.run(run())

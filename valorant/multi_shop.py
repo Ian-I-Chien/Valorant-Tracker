@@ -31,7 +31,13 @@ class MultiShopService(ShopService):
     async def _load(self, owner):
         value = await self.vault.get(owner)
         if value is None:
-            return {"version": 2, "accounts": {}, "notify": False, "states": {}}
+            return {
+                "version": 2,
+                "accounts": {},
+                "notify": False,
+                "states": {},
+                "notify_status": {},
+            }
         if value.get("version") == 2:
             # Old DM consent never authorizes publishing shops to a channel.
             if value.get("notify") and not value.get("notify_target"):
@@ -171,6 +177,11 @@ class MultiShopService(ShopService):
         async with self.owner_lock(owner):
             return (await self._load(owner)).get("notify_target")
 
+    async def notification_status(self, owner):
+        self.check(owner)
+        async with self.owner_lock(owner):
+            return dict((await self._load(owner)).get("notify_status", {}))
+
     async def set_notifications(self, owner, enabled, target=None):
         self.check(owner)
         async with self.owner_lock(owner):
@@ -204,6 +215,10 @@ class MultiShopService(ShopService):
             if not data["notify"]:
                 return
             stores, warnings = [], []
+            status = data.setdefault("notify_status", {})
+            status["last_check"] = int(time.time())
+            status.pop("last_error", None)
+            cycle_failed = False
             deadline = time.monotonic() + 120
             for puuid in list(data["accounts"]):
                 if time.monotonic() >= deadline:
@@ -234,11 +249,17 @@ class MultiShopService(ShopService):
                     state["next"] = expiry + 15
                     state.pop("retry", None)
                 except LoginExpired:
+                    status["last_error"] = "Account login expired"
+                    cycle_failed = True
                     if not state.get("warned"):
                         warnings.append(account_label(data["accounts"][puuid]))
                         state["warned"] = True
                 except Exception:
+                    status["last_error"] = "Shop check failed"
+                    cycle_failed = True
                     state["retry"] = now + 300
+            if not cycle_failed:
+                status["last_success"] = status["last_check"]
             # Durable at-most-once claim. No credentials or response bodies enter DMs.
             await self.vault.put(owner, data)
             if stores or warnings:
@@ -248,4 +269,5 @@ class MultiShopService(ShopService):
                     )
                 if not delivered:
                     data["notify"] = False
+                    status["last_error"] = "Report channel unavailable"
                     await self.vault.put(owner, data)
