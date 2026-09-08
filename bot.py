@@ -20,6 +20,7 @@ from commands import (
     set_notification_channel,
     show_server_config,
     predict_registered_player,
+    set_default_valorant_account,
     show_registered_player_info,
 )
 
@@ -156,22 +157,30 @@ async def show_config(interaction: discord.Interaction):
     name="predict", description="Predict a registered player's next match"
 )
 @app_commands.describe(username="Registered Valorant username or name#tag")
-async def predict(interaction: discord.Interaction, username: str):
+async def predict(interaction: discord.Interaction, username: str = ""):
     await predict_registered_player(interaction, username)
 
 
 @bot.tree.command(
     name="last_match", description="Show the latest completed match for a Riot ID"
 )
-@app_commands.describe(id="Required full Riot ID: name#tag")
-async def last_match(interaction: discord.Interaction, id: str):
+@app_commands.describe(id="Optional Riot ID; defaults to your tracked account")
+async def last_match(interaction: discord.Interaction, id: str = ""):
     await show_last_match(interaction, id)
 
 
 @bot.tree.command(name="info", description="Show recent stats for a registered player")
 @app_commands.describe(username="Registered Valorant username or name#tag")
-async def info(interaction: discord.Interaction, username: str):
+async def info(interaction: discord.Interaction, username: str = ""):
     await show_registered_player_info(interaction, username)
+
+
+@bot.tree.command(
+    name="default_account", description="Show or change your default tracked account"
+)
+@app_commands.describe(username="Tracked Valorant username or name#tag")
+async def default_account(interaction: discord.Interaction, username: str = ""):
+    await set_default_valorant_account(interaction, username or None)
 
 
 @bot.tree.command(

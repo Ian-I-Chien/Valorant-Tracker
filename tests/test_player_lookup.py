@@ -115,3 +115,26 @@ def test_predict_reports_api_failure_after_defer(monkeypatch):
             "content": "The Valorant API is temporarily unavailable. Please try again later."
         }
     ]
+
+
+def test_empty_query_resolves_users_default_account(monkeypatch):
+    record = SimpleNamespace(
+        valorant_account="Default#AP", valorant_puuid="default-puuid"
+    )
+
+    class Repository:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def get_default_subscription(self, server_id, user_id):
+            assert (server_id, user_id) == ("guild-1", "user-1")
+            return record
+
+    monkeypatch.setattr(commands, "UserSQLiteDB", Repository)
+
+    result = asyncio.run(commands.resolve_player_query("guild-1", "", "user-1"))
+
+    assert result == commands.ResolvedPlayer("Default#AP", "default-puuid")

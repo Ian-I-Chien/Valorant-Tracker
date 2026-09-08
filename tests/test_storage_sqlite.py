@@ -158,3 +158,29 @@ def test_existing_subscription_backfills_guild_settings(tmp_path):
             assert settings.notification_channel_id == "legacy-channel"
 
     run(scenario())
+
+
+def test_default_account_is_created_switchable_and_promoted(tmp_path):
+    database_file = tmp_path / "tracker.db"
+
+    async def scenario():
+        async with UserSQLiteDB(database_file) as repository:
+            await repository.register_user(
+                "owner", "owner", "Owner", "server", "channel", "One#AP", "p1"
+            )
+            await repository.register_user(
+                "owner", "owner", "Owner", "server", "channel", "Two#AP", "p2"
+            )
+            assert (
+                await repository.get_default_subscription("server", "owner")
+            ).valorant_account == "One#AP"
+            changed = await repository.set_default_subscription(
+                "server", "owner", "Two#AP"
+            )
+            assert changed.valorant_account == "Two#AP"
+            await repository.remove_valorant_account("owner", "server", "Two#AP")
+            assert (
+                await repository.get_default_subscription("server", "owner")
+            ).valorant_account == "One#AP"
+
+    run(scenario())

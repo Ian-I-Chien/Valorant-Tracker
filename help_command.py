@@ -12,8 +12,8 @@ def build_help_embed() -> discord.Embed:
     )
     embed.add_field(
         name="Last match - standalone lookup",
-        value="`/last_match id:name#tag` - Share the latest completed match. "
-        "Full Riot ID is required. No registration or shop login needed; "
+        value="`/last_match [id:name#tag]` - Share the latest completed match. "
+        "Uses your default tracked account when ID is omitted; "
         "does not change tracking. Errors are visible only to you.",
         inline=False,
     )
@@ -34,6 +34,7 @@ def build_help_embed() -> discord.Embed:
         name="Match notifications",
         value=(
             "`/reg_val valorant_account:name#tag` — Start tracking an account.\n"
+            "`/default_account [username]` — Show or change your default tracked account.\n"
             "`/del_val valorant_account:name#tag` — Stop tracking an account "
             "you registered in this server.\n"
             "A server manager must set the notification channel first. "

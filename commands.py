@@ -26,7 +26,7 @@ class ResolvedPlayer:
 
 
 async def resolve_player_query(
-    server_id: str, account_query: str
+    server_id: str, account_query: str, discord_user_id: Optional[str] = None
 ) -> Optional[ResolvedPlayer]:
     """Resolve a registered player or look up an unregistered full Riot ID.
 
@@ -35,7 +35,14 @@ async def resolve_player_query(
     """
     query = account_query.strip()
     async with UserSQLiteDB() as repository:
-        subscription = await repository.find_subscription(server_id, query)
+        if query:
+            subscription = await repository.find_subscription(server_id, query)
+        elif discord_user_id:
+            subscription = await repository.get_default_subscription(
+                server_id, discord_user_id
+            )
+        else:
+            subscription = None
     if subscription is not None:
         return ResolvedPlayer(
             riot_id=subscription.valorant_account,
@@ -75,7 +82,9 @@ async def predict_registered_player(
         return
     await interaction.response.defer(ephemeral=True)
     try:
-        player = await resolve_player_query(str(interaction.guild.id), account_query)
+        player = await resolve_player_query(
+            str(interaction.guild.id), account_query, str(interaction.user.id)
+        )
     except Exception:
         LOGGER.exception("Could not resolve player for prediction: %s", account_query)
         await interaction.edit_original_response(
@@ -136,7 +145,9 @@ async def show_registered_player_info(
         return
     await interaction.response.defer()
     try:
-        resolved = await resolve_player_query(str(interaction.guild.id), account_query)
+        resolved = await resolve_player_query(
+            str(interaction.guild.id), account_query, str(interaction.user.id)
+        )
     except Exception:
         LOGGER.exception("Could not resolve player info query: %s", account_query)
         await interaction.edit_original_response(
@@ -257,6 +268,35 @@ async def show_server_config(interaction: discord.Interaction) -> None:
     else:
         message = f"Match notification channel: <#{channel_id}>."
     await interaction.response.send_message(message, ephemeral=True)
+
+
+async def set_default_valorant_account(
+    interaction: discord.Interaction, account_query: Optional[str] = None
+) -> None:
+    if interaction.guild is None:
+        await interaction.response.send_message(
+            "This command can only be used in a Discord server.", ephemeral=True
+        )
+        return
+    await interaction.response.defer(ephemeral=True)
+    async with UserSQLiteDB() as repository:
+        if account_query:
+            account = await repository.set_default_subscription(
+                str(interaction.guild.id), str(interaction.user.id), account_query
+            )
+        else:
+            account = await repository.get_default_subscription(
+                str(interaction.guild.id), str(interaction.user.id)
+            )
+    if account is None:
+        await interaction.edit_original_response(
+            content="No matching tracked account. Use `/reg_val` first."
+        )
+        return
+    action = "Default account set to" if account_query else "Default account"
+    await interaction.edit_original_response(
+        content=f"{action}: `{account.valorant_account}`."
+    )
 
 
 async def delete_valorant_account(

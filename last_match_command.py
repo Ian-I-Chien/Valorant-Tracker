@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 import discord
 
+from database.storage_sqlite import UserSQLiteDB
 from valorant.match import Match
 from valorant.player import ValorantPlayer
 
@@ -55,12 +56,25 @@ def summary_embed(data: dict, riot_id: str) -> discord.Embed:
     return embed
 
 
-async def show_last_match(interaction: discord.Interaction, riot_id: str) -> None:
+async def show_last_match(
+    interaction: discord.Interaction, riot_id: str | None = None
+) -> None:
     if interaction.guild is None:
         await interaction.response.send_message(
             "Use this command in a Discord server.", ephemeral=True
         )
         return
+    if not riot_id:
+        async with UserSQLiteDB() as repository:
+            account = await repository.get_default_subscription(
+                str(interaction.guild.id), str(interaction.user.id)
+            )
+        if account is None:
+            await interaction.response.send_message(
+                "No default tracked account. Use `/reg_val` first.", ephemeral=True
+            )
+            return
+        riot_id = account.valorant_account
     parts = riot_id.strip().split("#")
     if len(parts) != 2 or not all(p.strip() for p in parts) or len(riot_id) > 128:
         await interaction.response.send_message(

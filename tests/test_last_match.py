@@ -10,6 +10,7 @@ import last_match_command as command
 def interaction():
     return SimpleNamespace(
         guild=SimpleNamespace(id=1),
+        user=SimpleNamespace(id=2),
         response=SimpleNamespace(send_message=AsyncMock(), defer=AsyncMock()),
         edit_original_response=AsyncMock(),
         followup=SimpleNamespace(send=AsyncMock()),
@@ -49,7 +50,7 @@ def lookup(monkeypatch):
     return account, history, detail, card
 
 
-@pytest.mark.parametrize("query", ["", "Player", "#TAG", "Player#", "a#b#c"])
+@pytest.mark.parametrize("query", ["Player", "#TAG", "Player#", "a#b#c"])
 def test_invalid_id_private_without_lookup(query, lookup):
     i = interaction()
     asyncio.run(command.show_last_match(i, query))
@@ -135,7 +136,7 @@ def test_option_required_and_independent_of_shop(monkeypatch):
     from bot import bot
 
     c = bot.tree.get_command("last_match")
-    assert [(p.name, p.required) for p in c.parameters] == [("id", True)]
+    assert [(p.name, p.required) for p in c.parameters] == [("id", False)]
 
 
 def test_card_highlighting_does_not_access_tracking_database(monkeypatch):
@@ -195,3 +196,26 @@ def test_malformed_detail_is_not_shared(lookup):
     asyncio.run(command.show_last_match(i, "Player#TAG"))
     i.followup.send.assert_not_awaited()
     lookup[3].assert_not_awaited()
+
+
+def test_missing_id_uses_default_tracked_account(monkeypatch, lookup):
+    record = SimpleNamespace(valorant_account="Player#TAG")
+
+    class Repository:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def get_default_subscription(self, server_id, user_id):
+            return record
+
+    monkeypatch.setattr(command, "UserSQLiteDB", Repository)
+    i = interaction()
+    i.user = SimpleNamespace(id=2)
+
+    asyncio.run(command.show_last_match(i))
+
+    lookup[0].assert_awaited_once()
+    i.followup.send.assert_awaited_once()

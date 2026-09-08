@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     valorant_puuid TEXT NOT NULL,
     channel_id TEXT NOT NULL,
     last_polled_match_id TEXT,
+    is_default INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (server_id, discord_user_id)
@@ -115,6 +116,33 @@ async def initialize_database(database_file: Path = DATABASE_FILE) -> None:
         await connection.execute("PRAGMA journal_mode = WAL")
         await connection.execute("PRAGMA synchronous = NORMAL")
         await connection.executescript(SCHEMA)
+        columns = {
+            row[1]
+            for row in await (
+                await connection.execute("PRAGMA table_info(subscriptions)")
+            ).fetchall()
+        }
+        if "is_default" not in columns:
+            await connection.execute(
+                "ALTER TABLE subscriptions ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0"
+            )
+        await connection.execute(
+            """
+            UPDATE subscriptions AS current
+            SET is_default = 1
+            WHERE current.id = (
+                SELECT MIN(candidate.id) FROM subscriptions AS candidate
+                WHERE candidate.server_id = current.server_id
+                  AND candidate.discord_user_id = current.discord_user_id
+            )
+              AND NOT EXISTS (
+                SELECT 1 FROM subscriptions AS chosen
+                WHERE chosen.server_id = current.server_id
+                  AND chosen.discord_user_id = current.discord_user_id
+                  AND chosen.is_default = 1
+            )
+            """
+        )
         await connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version) VALUES (1)"
         )
@@ -216,10 +244,13 @@ class UserSQLiteDB:
             await connection.execute(
                 """
                 INSERT INTO subscriptions(
-                    server_id, discord_user_id, valorant_puuid, channel_id
-                ) VALUES (?, ?, ?, ?)
+                    server_id, discord_user_id, valorant_puuid, channel_id, is_default
+                ) VALUES (?, ?, ?, ?, NOT EXISTS (
+                    SELECT 1 FROM subscriptions
+                    WHERE server_id = ? AND discord_user_id = ?
+                ))
                 """,
-                (dc_server_id, dc_id, val_puuid, dc_channel_id),
+                (dc_server_id, dc_id, val_puuid, dc_channel_id, dc_server_id, dc_id),
             )
         except (aiosqlite.IntegrityError, DuplicateSubscriptionError) as exc:
             await connection.execute("ROLLBACK TO register_subscription")
@@ -297,6 +328,52 @@ class UserSQLiteDB:
             last_polled_match_id=row["last_polled_match_id"],
         )
 
+    async def get_default_subscription(
+        self, server_id: str, discord_user_id: str
+    ) -> Optional[SubscriptionRecord]:
+        cursor = await self._connection().execute(
+            """
+            SELECT s.id AS subscription_id, s.server_id AS dc_server_id,
+                   s.discord_user_id AS dc_id, s.last_polled_match_id,
+                   a.puuid AS valorant_puuid,
+                   a.game_name || '#' || a.tag AS valorant_account
+            FROM subscriptions AS s
+            JOIN valorant_accounts AS a ON a.puuid = s.valorant_puuid
+            WHERE s.server_id = ? AND s.discord_user_id = ? AND s.is_default = 1
+            LIMIT 1
+            """,
+            (server_id, discord_user_id),
+        )
+        row = await cursor.fetchone()
+        return self._subscription_record(row) if row else None
+
+    async def set_default_subscription(
+        self, server_id: str, discord_user_id: str, account_query: str
+    ) -> Optional[SubscriptionRecord]:
+        record = await self.find_subscription(server_id, account_query)
+        if record is None or record.discord_user_id != discord_user_id:
+            return None
+        await self._connection().execute(
+            "UPDATE subscriptions SET is_default = 0 WHERE server_id = ? AND discord_user_id = ?",
+            (server_id, discord_user_id),
+        )
+        await self._connection().execute(
+            "UPDATE subscriptions SET is_default = 1 WHERE id = ?",
+            (record.id,),
+        )
+        return record
+
+    @staticmethod
+    def _subscription_record(row) -> SubscriptionRecord:
+        return SubscriptionRecord(
+            id=row["subscription_id"],
+            server_id=row["dc_server_id"],
+            discord_user_id=row["dc_id"],
+            valorant_account=row["valorant_account"],
+            valorant_puuid=row["valorant_puuid"],
+            last_polled_match_id=row["last_polled_match_id"],
+        )
+
     async def set_guild_notification_channel(
         self, server_id: str, channel_id: str
     ) -> GuildSettingsRecord:
@@ -360,7 +437,22 @@ class UserSQLiteDB:
             """,
             (dc_server_id, dc_id, game_name, tag),
         )
-        return cursor.rowcount > 0
+        removed = cursor.rowcount > 0
+        if removed:
+            await self._connection().execute(
+                """
+                UPDATE subscriptions SET is_default = 1
+                WHERE id = (
+                    SELECT MIN(id) FROM subscriptions
+                    WHERE server_id = ? AND discord_user_id = ?
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM subscriptions
+                    WHERE server_id = ? AND discord_user_id = ? AND is_default = 1
+                )
+                """,
+                (dc_server_id, dc_id, dc_server_id, dc_id),
+            )
+        return removed
 
     def _connection(self) -> aiosqlite.Connection:
         if self.connection is None:
