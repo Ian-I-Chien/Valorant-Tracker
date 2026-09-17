@@ -7,6 +7,16 @@ a single process on a Raspberry Pi and uses SQLite for local persistence.
 Match and account data come from the
 [HenrikDev unofficial Valorant API](https://github.com/Henrik-3/unofficial-valorant-api).
 
+## Preview
+
+![Example match scoreboard with player stats and party labels](pic/match_scoreboard_example.png)
+
+[Player overview](pic/player_info_example.png) · [Pre-match prediction](pic/prediction_example.png)
+
+Use `/info username:Player#TAG` to view a player without registering for tracking, or follow the [installation guide](#installation) to run the bot on your own Discord server.
+
+
+
 ## Features
 
 - Show an English `/help` guide privately, without API calls or registration.
