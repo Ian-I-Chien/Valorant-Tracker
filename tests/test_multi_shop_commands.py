@@ -32,6 +32,7 @@ def fixture():
             )
         ),
         shop=AsyncMock(),
+        night_market=AsyncMock(),
         logout=AsyncMock(),
         set_notifications=AsyncMock(),
         notification_target=AsyncMock(return_value=None),
@@ -149,7 +150,7 @@ def test_feature_registration_and_help_with_shop_enabled(tmp_path, monkeypatch):
         bot = commands.Bot(command_prefix="!", intents=discord.Intents.none())
         register_shop_commands(bot)
         names = {c.name for c in bot.tree.get_commands()}
-        assert names == {"login", "shop", "logout", "accounts"}
+        assert names == {"login", "shop", "nightmarket", "logout", "accounts"}
         text = "\n".join(f.value for f in build_help_embed().fields)
         for name in names:
             assert "/" + name in text
@@ -208,7 +209,30 @@ def test_failed_public_delivery_is_not_retried(monkeypatch):
     asyncio.run(run())
 
 
-def test_notifications_use_saved_channel_never_dm():
+def test_nightmarket_sends_one_private_generated_card_to_report_channel():
+    async def run():
+        bot, service, interaction = fixture()
+        service.night_market.return_value = {
+            "kind": "night",
+            "riot_id": "One#TAG",
+            "expires": 2_000_000_000,
+            "offers": [],
+        }
+        await bot.tree.get_command("nightmarket").callback(interaction, "one")
+        service.night_market.assert_awaited_once_with(1, "one")
+        bot.report_channel.send.assert_awaited_once()
+        sent = bot.report_channel.send.call_args.kwargs
+        assert sent["file"].filename == "night-market.png"
+        assert "Night Market" in sent["content"]
+
+    asyncio.run(run())
+
+
+def test_notifications_use_saved_channel_never_dm(monkeypatch):
+    monkeypatch.setattr(
+        multi_shop_commands, "combined_shop_card", AsyncMock(return_value=b"jpeg")
+    )
+
     async def run():
         bot, s, i = fixture()
         bot.wait_until_ready = AsyncMock()
@@ -246,7 +270,12 @@ def test_notifications_use_saved_channel_never_dm():
             bot.fetch_channel.assert_awaited_once_with(10)
             bot.fetch_user.assert_not_awaited()
             channel.send.assert_awaited_once()
-            assert "expired-secret" not in channel.send.call_args.args[0]
+            assert "expired-secret" not in str(channel.send.call_args)
+            assert (
+                channel.send.call_args.kwargs["content"]
+                == "Daily stores - 1 account(s)"
+            )
+            assert channel.send.call_args.kwargs["file"].filename == "daily-stores.jpg"
             guild.fetch_member.assert_awaited_once_with(1)
         finally:
             bot.shop_notification_task.cancel()

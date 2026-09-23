@@ -46,3 +46,24 @@ def test_untrusted_artwork_never_requested(monkeypatch, url):
     )
     assert result.startswith(b"\x89PNG")
     get.assert_not_called()
+
+
+def test_night_market_card_supports_six_discounted_offers():
+    data = {
+        "kind": "night",
+        "riot_id": "Night#Market",
+        "expires": 2_000_000_000,
+        "offers": [
+            {
+                "id": str(index),
+                "name": f"Skin {index}",
+                "price": 875,
+                "original_price": 1250,
+                "discount": 30,
+                "icon": None,
+            }
+            for index in range(6)
+        ],
+    }
+    with Image.open(BytesIO(render_shop_card(data, now=1_900_000_000))) as image:
+        assert image.size == (1000, 1344)

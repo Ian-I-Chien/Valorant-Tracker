@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from io import BytesIO
 
 import discord
 
@@ -36,30 +37,51 @@ async def resolve_report_channel(bot, guild_id: int, owner: int):
     return channel
 
 
-def notification_sender(bot, shop_text):
+def notification_sender(bot, shop_text, combined_shop_card, shop_card_png):
     async def send(owner, stores, warnings, target):
         if not stores:
             return True  # Authorization failures are shown privately in /accounts.
+        attachment = None
         try:
             channel = await resolve_report_channel(bot, target["guild"], owner)
-            chunk = f"Shop update for <@{owner}>\n"
-            for section in (shop_text(store) for store in stores):
-                if len(chunk) + len(section) + 2 > 1900:
-                    await channel.send(
-                        chunk, allowed_mentions=discord.AllowedMentions.none()
-                    )
-                    chunk = ""
-                chunk += ("\n\n" if chunk else "") + section
-            if chunk:
+            try:
+                async with asyncio.timeout(90):
+                    image = await combined_shop_card(stores, shop_card_png)
+                attachment = discord.File(BytesIO(image), filename="daily-stores.jpg")
                 await channel.send(
-                    chunk, allowed_mentions=discord.AllowedMentions.none()
+                    content=f"Daily stores - {len(stores)} account(s)",
+                    file=attachment,
+                    allowed_mentions=discord.AllowedMentions.none(),
                 )
+            except Exception:
+                LOGGER.warning(
+                    "Shop notification card unavailable; using text fallback"
+                )
+                text = f"Daily stores - {len(stores)} account(s)\n\n" + "\n\n".join(
+                    shop_text(store) for store in stores
+                )
+                if len(text) <= 1900:
+                    await channel.send(
+                        text, allowed_mentions=discord.AllowedMentions.none()
+                    )
+                else:
+                    attachment = discord.File(
+                        BytesIO(text.encode()), filename="daily-stores.txt"
+                    )
+                    await channel.send(
+                        content=f"Daily stores - {len(stores)} account(s)",
+                        file=attachment,
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
             return True
         except (discord.Forbidden, discord.NotFound, ValueError):
             return False
         except Exception:
             LOGGER.warning("Shop notification delivery unavailable; details suppressed")
             return True
+        finally:
+            if attachment:
+                attachment.close()
 
     return send
 
@@ -80,9 +102,11 @@ async def notification_worker(bot, service, send):
         await asyncio.sleep(60)
 
 
-def install_shop_notification_worker(bot, service, shop_text):
+def install_shop_notification_worker(
+    bot, service, shop_text, combined_shop_card, shop_card_png
+):
     """Register one idempotent background worker on the bot ready event."""
-    send = notification_sender(bot, shop_text)
+    send = notification_sender(bot, shop_text, combined_shop_card, shop_card_png)
 
     async def start_worker():
         task = getattr(bot, "shop_notification_task", None)

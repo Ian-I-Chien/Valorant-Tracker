@@ -53,17 +53,30 @@ def render_shop_card(data, artwork=None, *, now=None, preview=False):
     artwork = artwork or {}
     now = datetime.now(timezone.utc).timestamp() if now is None else now
     offers = data.get("offers", [])
-    if len(offers) > 4:
-        raise ValueError("Daily shop card supports at most four offers")
-    canvas = Image.new("RGB", (1000, 1000), BG)
+    night = data.get("kind") == "night"
+    limit = 6 if night else 4
+    if len(offers) > limit:
+        raise ValueError("Store card has too many offers")
+    rows = max(2, (len(offers) + 1) // 2)
+    height = 1000 + max(0, rows - 2) * 344
+    canvas = Image.new("RGB", (1000, height), BG)
     draw = ImageDraw.Draw(canvas)
-    draw.rectangle((0, 0, 14, 1000), fill=RED)
-    draw.text((55, 36), "DAILY STORE", font=font(25, True), fill=RED)
+    draw.rectangle((0, 0, 14, height), fill=RED)
+    draw.text(
+        (55, 36),
+        "NIGHT MARKET" if night else "DAILY STORE",
+        font=font(25, True),
+        fill=RED,
+    )
     label, face = fit(draw, data.get("riot_id") or "Linked account", 575, 39)
     draw.text((55, 77), label, font=face, fill=WHITE)
     draw.text(
         (55, 132),
-        "PERSONAL ROTATION  •  DAILY OFFERS",
+        (
+            "PERSONAL ROTATION  •  DISCOUNT OFFERS"
+            if night
+            else "PERSONAL ROTATION  •  DAILY OFFERS"
+        ),
         font=font(14, True),
         fill=MUTED,
     )
@@ -84,7 +97,7 @@ def render_shop_card(data, artwork=None, *, now=None, preview=False):
         draw.rounded_rectangle((x, y, x + 433, y + 319), radius=20, fill=PANEL)
         draw.text(
             (x + 24, y + 18),
-            f"0{index + 1}  /  DAILY OFFER",
+            f"0{index + 1}  /  {'NIGHT OFFER' if night else 'DAILY OFFER'}",
             font=font(13, True),
             fill=MUTED,
         )
@@ -123,31 +136,45 @@ def render_shop_card(data, artwork=None, *, now=None, preview=False):
             font=font(21, True),
             fill=GREEN if price is not None else MUTED,
         )
+        if night and item.get("discount"):
+            original = item.get("original_price")
+            old = f"  WAS {original:,} VP" if isinstance(original, int) else ""
+            draw.text(
+                (x + 175, y + 276),
+                f"-{item['discount']}%{old}",
+                font=font(14, True),
+                fill=RED,
+            )
     if not offers:
         draw.text(
             (500, 470),
-            "NO DAILY OFFERS AVAILABLE",
+            "NO NIGHT MARKET OFFERS" if night else "NO DAILY OFFERS AVAILABLE",
             anchor="mm",
             font=font(25, True),
             fill=MUTED,
         )
-    draw.line((55, 907, 945, 907), fill=LINE)
+    footer = height - 93
+    draw.line((55, footer, 945, footer), fill=LINE)
     stamp = (
         datetime.fromtimestamp(data.get("fetched_at", now), timezone.utc)
         .strftime("%d %b %Y  %H:%M UTC")
         .upper()
     )
-    draw.text((55, 930), "UPDATED  " + stamp, font=font(13, True), fill=MUTED)
+    draw.text((55, footer + 23), "UPDATED  " + stamp, font=font(13, True), fill=MUTED)
     draw.text(
-        (945, 930),
+        (945, footer + 23),
         "DEMO DATA" if preview else "VALORANT TRACKER",
         anchor="ra",
         font=font(13, True),
         fill=RED if preview else MUTED,
     )
     draw.text(
-        (55, 958),
-        "Countdown at render time · run /shop to refresh",
+        (55, footer + 51),
+        (
+            "Countdown at render time · run /nightmarket to refresh"
+            if night
+            else "Countdown at render time · run /shop to refresh"
+        ),
         font=font(12),
         fill=MUTED,
     )
@@ -188,7 +215,7 @@ async def shop_card_png(data):
         except Exception:
             return None
 
-    offers = data.get("offers", [])[:4]
+    offers = data.get("offers", [])[: 6 if data.get("kind") == "night" else 4]
     async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as session:
         images = await asyncio.gather(*(load(session, item) for item in offers))
     artwork = {

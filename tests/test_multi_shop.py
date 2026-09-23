@@ -43,6 +43,14 @@ class Client:
             raise ShopError("Temporary error")
         return dict(expires=self.expiry, offers=[dict(id="skin", price=1000)])
 
+    async def night_market(self, account):
+        self.seen.append(account["puuid"])
+        return dict(
+            kind="night",
+            expires=self.expiry,
+            offers=[dict(id="skin", price=875, original_price=1250, discount=30)],
+        )
+
     async def skin(self, item):
         return dict(name="Test skin", icon=None)
 
@@ -73,6 +81,21 @@ def test_add_relogin_remove_and_owner_isolation(tmp_path):
         assert (await s.accounts(1))[0][0]["id"] == P2
         assert (await s.shop(1, P2))["riot_id"] == "Account2#TAG"
         assert b"secret-refresh" not in s.vault.path.read_bytes()
+
+    asyncio.run(run())
+
+
+def test_night_market_is_account_scoped_and_cached_separately(tmp_path):
+    async def run():
+        service, client = await setup(tmp_path)
+        await link(service, client)
+        daily = await service.shop(1, P1)
+        night = await service.night_market(1, P1)
+        assert daily["offers"][0]["price"] == 1000
+        assert night["offers"][0]["discount"] == 30
+        assert night["riot_id"] == "Account1#TAG"
+        await service.night_market(1, P1)
+        assert client.seen.count(P1) == 2
 
     asyncio.run(run())
 

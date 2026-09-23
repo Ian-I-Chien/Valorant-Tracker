@@ -13,6 +13,7 @@ from shop_notifications import (
     resolve_report_channel,
 )
 from valorant.combined_shop_card import combined_shop_card
+from valorant.shop_service import ShopError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -126,6 +127,71 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
             await interaction.edit_original_response(
                 content="Shop request failed. Please try again later."
             )
+
+    @bot.tree.command(
+        name="nightmarket", description="Share one linked account's active Night Market"
+    )
+    @app_commands.describe(account="Choose a linked Riot account")
+    @app_commands.autocomplete(account=choices)
+    async def nightmarket(interaction: discord.Interaction, account: str = None):
+        await interaction.response.send_message(
+            "Loading Night Market...", ephemeral=True
+        )
+        attachment = None
+        try:
+            await ready(interaction.user.id)
+            if interaction.guild is None:
+                await interaction.edit_original_response(
+                    content="Use /nightmarket in a server."
+                )
+                return
+            try:
+                destination = await report_channel(
+                    interaction.guild.id, interaction.user.id
+                )
+            except Exception:
+                await interaction.edit_original_response(
+                    content="Report channel unavailable. Check /set_channel and channel permissions."
+                )
+                return
+            accounts, _ = await service.accounts(interaction.user.id)
+            if not accounts:
+                await interaction.edit_original_response(
+                    content="Use /login to add an account first."
+                )
+                return
+            if account is None:
+                if len(accounts) != 1:
+                    await interaction.edit_original_response(
+                        content="Choose an account from the `/nightmarket` account list."
+                    )
+                    return
+                account = accounts[0]["id"]
+            async with asyncio.timeout(75):
+                result = await service.night_market(interaction.user.id, account)
+                image = await shop_card_png(result)
+            attachment = discord.File(BytesIO(image), filename="night-market.png")
+            await destination.send(
+                content=(
+                    f"**{display(result['riot_id'])} — Night Market** • "
+                    f"Ends <t:{int(result['expires'])}:R>"
+                ),
+                file=attachment,
+                allowed_mentions=discord.AllowedMentions.none(),
+            )
+            await interaction.edit_original_response(
+                content=f"Shared Night Market in <#{destination.id}>."
+            )
+        except ShopError as error:
+            await interaction.edit_original_response(content=str(error))
+        except Exception:
+            LOGGER.warning("Night Market request failed; details suppressed")
+            await interaction.edit_original_response(
+                content="Night Market request failed. Please try again later."
+            )
+        finally:
+            if attachment:
+                attachment.close()
 
     @bot.tree.command(
         name="logout",
@@ -289,4 +355,6 @@ def install_multi_commands(bot, service, ready, display, shop_text, shop_card_pn
     async def accounts(interaction: discord.Interaction):
         await panel(interaction)
 
-    install_shop_notification_worker(bot, service, shop_text)
+    install_shop_notification_worker(
+        bot, service, shop_text, combined_shop_card, shop_card_png
+    )

@@ -85,7 +85,8 @@ class MultiShopService(ShopService):
             state.pop("warned", None)
             state.pop("retry", None)
             await self.vault.put(owner, data)
-            self.cache.pop((owner, puuid), None)
+            self.cache.pop((owner, puuid, "daily"), None)
+            self.cache.pop((owner, puuid, "night"), None)
             return account_label(account)
 
     def _select(self, data, account):
@@ -107,7 +108,8 @@ class MultiShopService(ShopService):
             puuid = self._select(data, account)
             del data["accounts"][puuid]
             data["states"].pop(puuid, None)
-            self.cache.pop((owner, puuid), None)
+            self.cache.pop((owner, puuid, "daily"), None)
+            self.cache.pop((owner, puuid, "night"), None)
             self.pending.pop(owner, None)
             if not data["accounts"]:
                 data["notify"] = False
@@ -117,11 +119,12 @@ class MultiShopService(ShopService):
         async with self.requests:
             return await self._fetch_shop(owner, data, puuid)
 
-    async def _fetch_shop(self, owner, data, puuid):
+    async def _fetch_shop(self, owner, data, puuid, kind="daily"):
         account = data["accounts"][puuid]
         if account.get("auth_required"):
             raise LoginExpired("This account needs /login again.")
-        cached = self.cache.get((owner, puuid))
+        cache_key = (owner, puuid, kind)
+        cached = self.cache.get(cache_key)
         if cached and min(cached["expires"], cached["fetched_at"] + 300) > time.time():
             return cached
         try:
@@ -129,7 +132,10 @@ class MultiShopService(ShopService):
                 account = await self.client.refresh(account)
                 data["accounts"][puuid] = account
                 await self.vault.put(owner, data)
-            result = await self.client.shop(account)
+            operation = (
+                self.client.shop if kind == "daily" else self.client.night_market
+            )
+            result = await operation(account)
         except LoginExpired:
             # Keep only identity metadata, never keep rejected credentials.
             data["accounts"][puuid] = {
@@ -138,7 +144,8 @@ class MultiShopService(ShopService):
                 if k in account
             }
             data["accounts"][puuid]["auth_required"] = True
-            self.cache.pop((owner, puuid), None)
+            self.cache.pop((owner, puuid, "daily"), None)
+            self.cache.pop((owner, puuid, "night"), None)
             await self.vault.put(owner, data)
             raise
         if not account.get("tag"):
@@ -157,7 +164,7 @@ class MultiShopService(ShopService):
                 item.update(name="Skin " + item["id"], icon=None)
         if len(self.cache) >= 100:
             self.cache.pop(next(iter(self.cache)))
-        self.cache[(owner, puuid)] = result
+        self.cache[cache_key] = result
         return result
 
     async def shop(self, owner, account):
@@ -165,6 +172,14 @@ class MultiShopService(ShopService):
         async with self.owner_lock(owner):
             data = await self._load(owner)
             return await self._shop(owner, data, self._select(data, account))
+
+    async def night_market(self, owner, account):
+        self.check(owner)
+        async with self.owner_lock(owner):
+            data = await self._load(owner)
+            puuid = self._select(data, account)
+            async with self.requests:
+                return await self._fetch_shop(owner, data, puuid, "night")
 
     async def notification_target(self, owner):
         self.check(owner)

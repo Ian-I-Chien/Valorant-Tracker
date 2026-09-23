@@ -239,7 +239,7 @@ class RiotStoreClient:
             "tag": acct.get("tag_line", ""),
         }
 
-    async def shop(self, account):
+    async def storefront(self, account):
         headers = {"Authorization": "Bearer " + account["access_token"]}
         entitlement = await self.request(
             "POST",
@@ -263,12 +263,15 @@ class RiotStoreClient:
                 ).decode(),
             }
         )
-        result = await self.request(
+        return await self.request(
             "POST",
             f"https://pd.{account['region']}.a.pvp.net/store/v3/storefront/{account['puuid']}",
             headers=headers,
             json={},
         )
+
+    async def shop(self, account):
+        result = await self.storefront(account)
         panel = result["SkinsPanelLayout"]
         prices = {
             offer["OfferID"]: offer.get("Cost", {}).get(
@@ -277,6 +280,7 @@ class RiotStoreClient:
             for offer in panel.get("SingleItemStoreOffers", [])
         }
         return {
+            "kind": "daily",
             "expires": time.time()
             + max(
                 0, min(86400, int(panel["SingleItemOffersRemainingDurationInSeconds"]))
@@ -285,6 +289,35 @@ class RiotStoreClient:
                 {"id": str(uuid.UUID(item)), "price": prices.get(item)}
                 for item in panel["SingleItemOffers"][:4]
             ],
+        }
+
+    async def night_market(self, account):
+        result = await self.storefront(account)
+        bonus = result.get("BonusStore")
+        if not bonus or not bonus.get("BonusStoreOffers"):
+            raise ShopError("Night Market is not currently available for this account.")
+        vp = "85ad13f7-3d1b-5128-9eb2-7cd8ee0b5741"
+        offers = []
+        for entry in bonus["BonusStoreOffers"][:6]:
+            offer = entry.get("Offer") or {}
+            item_id = offer.get("OfferID")
+            if not item_id:
+                continue
+            offers.append(
+                {
+                    "id": str(uuid.UUID(item_id)),
+                    "price": (entry.get("DiscountCosts") or {}).get(vp),
+                    "original_price": (offer.get("Cost") or {}).get(vp),
+                    "discount": int(entry.get("DiscountPercent") or 0),
+                }
+            )
+        if not offers:
+            raise ShopError("Riot returned an empty Night Market. Try again later.")
+        remaining = int(bonus.get("BonusStoreRemainingDurationInSeconds") or 0)
+        return {
+            "kind": "night",
+            "expires": time.time() + max(0, min(45 * 86400, remaining)),
+            "offers": offers,
         }
 
     async def skin(self, item_id):

@@ -7,16 +7,6 @@ a single process on a Raspberry Pi and uses SQLite for local persistence.
 Match and account data come from the
 [HenrikDev unofficial Valorant API](https://github.com/Henrik-3/unofficial-valorant-api).
 
-## Preview
-
-![Example match scoreboard with player stats and party labels](pic/match_scoreboard_example.png)
-
-[Player overview](pic/player_info_example.png) · [Pre-match prediction](pic/prediction_example.png)
-
-Use `/info username:Player#TAG` to view a player without registering for tracking, or follow the [installation guide](#installation) to run the bot on your own Discord server.
-
-
-
 ## Features
 
 - Show an English `/help` guide privately, without API calls or registration.
@@ -195,7 +185,7 @@ changes. If card rendering fails, the command returns a compact text summary.
 
 ### Experimental shop (off by default)
 
-An opt-in `/login`, `/shop`, and `/logout` flow supports either an explicit
+An opt-in `/login`, `/shop`, `/nightmarket`, and `/logout` flow supports either an explicit
 Discord user allowlist or open registration with `SHOP_ALLOWED_USER_IDS=*`.
 Each bot environment reads its own settings; the default remains disabled.
 It stores encrypted Riot authorization separately from match tracking. `/login`, `/logout`, and errors stay private. `/shop` shares a 2x2
@@ -408,6 +398,9 @@ whether the feature succeeded.
 `/login` adds accounts, preserving other logins (up to 25). Re-login updates only
 that account. `/shop` combines all linked stores into one image and one public
 message; `/shop account:...` selects one. There is no default account.
+`/nightmarket account:...` renders up to six discounted Night Market offers for
+one account in the configured report channel. With exactly one linked account,
+the account argument may be omitted.
 `/logout account:...` removes one account.
 
 Use `/accounts` for private account management and the all-account notification
