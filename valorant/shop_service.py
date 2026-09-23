@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlencode, urlsplit
 import aiohttp
 import aiosqlite
 from cryptography.fernet import Fernet, InvalidToken
+from valorant.night_market import parse_night_market
 
 
 class ShopError(Exception):
@@ -276,8 +277,9 @@ class RiotStoreClient:
             )
             for offer in panel.get("SingleItemStoreOffers", [])
         }
-        return {
-            "expires": time.time()
+        now = time.time()
+        daily = {
+            "expires": now
             + max(
                 0, min(86400, int(panel["SingleItemOffersRemainingDurationInSeconds"]))
             ),
@@ -286,6 +288,13 @@ class RiotStoreClient:
                 for item in panel["SingleItemOffers"][:4]
             ],
         }
+        try:
+            daily["night_market"] = parse_night_market(result, now)
+        except (KeyError, TypeError, ValueError, AttributeError):
+            # Optional schema problems must not discard a valid daily shop.
+            daily["night_market"] = None
+            daily["night_market_unavailable"] = True
+        return daily
 
     async def skin(self, item_id):
         data = await self.request(
@@ -391,7 +400,7 @@ class ShopService:
             if account is None:
                 raise ShopError("Use /login to link your own Riot account first.")
             cached = self.cache.get(owner)
-            if cached and cached["expires"] > time.time():
+            if cached and cached.get("cache_until", cached["expires"]) > time.time():
                 return cached
             try:
                 if account["expires"] <= time.time() + 120:
@@ -414,11 +423,24 @@ class ShopService:
                     pass
             result["riot_id"] = account_label(account)
             result["fetched_at"] = time.time()
-            for item in result["offers"]:
+            market = result.get("night_market")
+            items = result["offers"] + (market["offers"] if market else [])
+            metadata = {}
+            for item in items:
                 try:
-                    item.update(await self.client.skin(item["id"]))
+                    if item["id"] not in metadata:
+                        metadata[item["id"]] = await self.client.skin(item["id"])
+                    item.update(metadata[item["id"]])
                 except Exception:
                     item.update(name="Skin " + item["id"], icon=None)
+            # Refresh periodically even without BonusStore so a newly opened
+            # event appears before the next daily rotation. Never cache past
+            # either section's expiry.
+            result["cache_until"] = min(
+                result["expires"],
+                time.time() + 300,
+                market["expires"] if market else float("inf"),
+            )
             if len(self.cache) >= 100:
                 self.cache.pop(next(iter(self.cache)))
             self.cache[owner] = result

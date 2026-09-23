@@ -22,7 +22,7 @@ def test_valid_png_for_missing_and_full_offers(offers):
     )
     with Image.open(BytesIO(payload)) as image:
         image.load()
-        assert image.size == (1000, 1000)
+        assert image.size == (1000, 930)
         assert image.format == "PNG"
 
 
