@@ -7,6 +7,7 @@ from typing import Optional
 import discord
 from database.storage_sqlite import UserSQLiteDB
 from userdb_coordination import get_userdb_lock
+from valorant.match import Match
 from valorant.player import ValorantPlayer
 from valorant.player_info import PlayerInfoCardRenderer, build_player_info
 from valorant.prediction import (
