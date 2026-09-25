@@ -2,6 +2,11 @@ import asyncio
 from types import SimpleNamespace
 
 import commands
+from valorant.match import Match
+
+
+def test_match_fetcher_is_available_to_info_and_predict():
+    assert commands.Match is Match
 
 
 class FakeRepository:
