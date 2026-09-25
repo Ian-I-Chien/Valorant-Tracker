@@ -114,7 +114,7 @@ def test_predict_reports_api_failure_after_defer(monkeypatch):
 
     asyncio.run(commands.predict_registered_player(interaction, "Player#TAG"))
 
-    assert interaction.response.deferred_with == {"ephemeral": True}
+    assert interaction.response.deferred_with == {}
     assert interaction.edits == [
         {
             "content": "The Valorant API is temporarily unavailable. Please try again later."
