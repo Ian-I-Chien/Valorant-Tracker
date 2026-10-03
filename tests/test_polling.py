@@ -120,6 +120,7 @@ def test_new_match_prefers_graphical_card(monkeypatch):
     assert result.image == b"png-data"
     assert result.embed is None
     assert result.contour_color == match_polling.BLUE_CONTOUR_COLOR
+    assert result.valorant_account == "player#tag"
 
 
 def test_new_match_falls_back_to_text_embed(monkeypatch):

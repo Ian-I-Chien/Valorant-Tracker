@@ -86,6 +86,21 @@ async def polling_matches():
             LOGGER.warning("Configured channel %s cannot receive messages", channel_id)
             return
 
+        output_kind = "image" if polling_result.image is not None else "embed"
+        LOGGER.info(
+            "Delivering match notification account=%s match_id=%s "
+            "subscription_id=%s server_id=%s channel_id=%s "
+            "discord_user_id=%s output=%s previous_match_id=%s",
+            polling_result.valorant_account,
+            polling_result.match_id,
+            polling_result.subscription_id,
+            polling_result.server_id,
+            channel_id,
+            polling_result.dc_id,
+            output_kind,
+            polling_result.previous_match_id,
+        )
+
         if polling_result.image is not None:
             filename = "match-scoreboard.png"
             image_embed = discord.Embed(
@@ -99,10 +114,29 @@ async def polling_matches():
         else:
             await channel.send(embed=polling_result.embed)
 
-        if not await mark_match_delivered(polling_result):
+        LOGGER.info(
+            "Discord match notification sent account=%s match_id=%s "
+            "subscription_id=%s channel_id=%s output=%s",
+            polling_result.valorant_account,
+            polling_result.match_id,
+            polling_result.subscription_id,
+            channel_id,
+            output_kind,
+        )
+
+        checkpointed = await mark_match_delivered(polling_result)
+        if not checkpointed:
             LOGGER.warning(
                 "Match %s was delivered but its subscription changed",
                 polling_result.match_id,
+            )
+        else:
+            LOGGER.info(
+                "Match delivery checkpoint saved account=%s match_id=%s "
+                "subscription_id=%s",
+                polling_result.valorant_account,
+                polling_result.match_id,
+                polling_result.subscription_id,
             )
 
     except Exception:

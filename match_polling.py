@@ -21,6 +21,7 @@ class PollingMatchResult:
     embed: Optional[discord.Embed]
     image: Optional[bytes]
     contour_color: str
+    valorant_account: str
     server_id: str
     dc_id: str
     valorant_puuid: str
@@ -106,6 +107,7 @@ async def _prepare_subscription(repository, subscription):
             embed=embed,
             image=image,
             contour_color=_match_contour_color(match.last_match_data),
+            valorant_account=account,
             server_id=subscription.server_id,
             dc_id=subscription.discord_user_id,
             valorant_puuid=subscription.valorant_puuid,
