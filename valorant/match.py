@@ -371,6 +371,11 @@ class Match:
             result=result,
             played_at=started_at.astimezone().strftime("%Y/%m/%d %H:%M"),
             players=tuple(card_players),
+            winning_team=(
+                "Blue"
+                if blue_wins > red_wins
+                else "Red" if red_wins > blue_wins else "Draw"
+            ),
         )
         return await MatchCardRenderer().render(card_data)
 

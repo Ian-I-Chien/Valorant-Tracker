@@ -51,6 +51,7 @@ class MatchCardData:
     result: str
     played_at: str
     players: tuple[MatchCardPlayer, ...]
+    winning_team: str = "Draw"
 
 
 def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
@@ -200,7 +201,8 @@ class MatchCardRenderer:
             card.paste(background, (0, 0))
 
         draw.rectangle(
-            (0, HEADER_HEIGHT - 5, CARD_WIDTH, HEADER_HEIGHT), fill="#ff4655"
+            (0, HEADER_HEIGHT - 5, CARD_WIDTH, HEADER_HEIGHT),
+            fill="#4ea6ff" if data.winning_team == "Blue" else "#ff4655",
         )
         draw.text((46, 38), data.map_name.upper(), font=_font(52, True), fill="white")
         draw.text(

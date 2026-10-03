@@ -11,17 +11,40 @@ from valorant.match import Match
 
 LOGGER = logging.getLogger(__name__)
 
+BLUE_CONTOUR_COLOR = "#3498db"
+RED_CONTOUR_COLOR = "#ff4655"
+DRAW_CONTOUR_COLOR = "#99aab5"
+
 
 @dataclass(frozen=True)
 class PollingMatchResult:
     embed: Optional[discord.Embed]
     image: Optional[bytes]
+    contour_color: str
     server_id: str
     dc_id: str
     valorant_puuid: str
     match_id: str
     subscription_id: int
     previous_match_id: Optional[str]
+
+
+def _match_contour_color(match_data: dict) -> str:
+    """Return a Discord contour color matching the winning team."""
+    scores = {}
+    for team in match_data.get("data", {}).get("teams", []):
+        team_id = team.get("team_id")
+        won = team.get("rounds", {}).get("won")
+        if team_id in {"Blue", "Red"} and isinstance(won, int):
+            scores[team_id] = won
+
+    blue_score = scores.get("Blue")
+    red_score = scores.get("Red")
+    if blue_score is None or red_score is None or blue_score == red_score:
+        return DRAW_CONTOUR_COLOR
+    if blue_score > red_score:
+        return BLUE_CONTOUR_COLOR
+    return RED_CONTOUR_COLOR
 
 
 async def handle_polling_matches() -> Optional[PollingMatchResult]:
@@ -82,6 +105,7 @@ async def _prepare_subscription(repository, subscription):
         return PollingMatchResult(
             embed=embed,
             image=image,
+            contour_color=_match_contour_color(match.last_match_data),
             server_id=subscription.server_id,
             dc_id=subscription.discord_user_id,
             valorant_puuid=subscription.valorant_puuid,

@@ -1,4 +1,15 @@
-from valorant.match_card import MatchCardPlayer, _build_party_styles, _format_rr
+from io import BytesIO
+
+from PIL import Image
+
+from valorant.match_card import (
+    HEADER_HEIGHT,
+    MatchCardData,
+    MatchCardPlayer,
+    MatchCardRenderer,
+    _build_party_styles,
+    _format_rr,
+)
 
 
 def _player(team_id: str, party_id: str) -> MatchCardPlayer:
@@ -54,3 +65,27 @@ def test_rr_is_only_shown_for_competitive_queue():
 
     assert _format_rr("Competitive", player) == "  RR 73 (+18)"
     assert _format_rr("Unrated", player) == ""
+
+
+def test_header_divider_uses_winning_team_color():
+    base = {
+        "map_name": "Haven",
+        "map_id": "map-id",
+        "queue_name": "Competitive",
+        "score": "13 : 9",
+        "result": "VICTORY",
+        "played_at": "2026/10/03 12:00",
+        "players": (),
+    }
+
+    blue_png = MatchCardRenderer._draw(
+        MatchCardData(**base, winning_team="Blue"), None, [], []
+    )
+    red_png = MatchCardRenderer._draw(
+        MatchCardData(**base, winning_team="Red"), None, [], []
+    )
+
+    with Image.open(BytesIO(blue_png)) as blue_card:
+        assert blue_card.getpixel((600, HEADER_HEIGHT - 2)) == (78, 166, 255)
+    with Image.open(BytesIO(red_png)) as red_card:
+        assert red_card.getpixel((600, HEADER_HEIGHT - 2)) == (255, 70, 85)
