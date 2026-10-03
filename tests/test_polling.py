@@ -96,7 +96,14 @@ def test_new_match_prefers_graphical_card(monkeypatch):
             return "new-match"
 
         async def fetch_match(self):
-            return {"data": {}}
+            return {
+                "data": {
+                    "teams": [
+                        {"team_id": "Blue", "rounds": {"won": 13}},
+                        {"team_id": "Red", "rounds": {"won": 9}},
+                    ]
+                }
+            }
 
         async def build_match_card(self):
             return b"png-data"
@@ -112,6 +119,7 @@ def test_new_match_prefers_graphical_card(monkeypatch):
     assert result is not None
     assert result.image == b"png-data"
     assert result.embed is None
+    assert result.contour_color == match_polling.BLUE_CONTOUR_COLOR
 
 
 def test_new_match_falls_back_to_text_embed(monkeypatch):
@@ -139,3 +147,28 @@ def test_new_match_falls_back_to_text_embed(monkeypatch):
     assert result is not None
     assert result.image is None
     assert result.embed is fallback
+
+
+def test_match_contour_color_follows_winning_team():
+    def payload(blue_score, red_score):
+        return {
+            "data": {
+                "teams": [
+                    {"team_id": "Blue", "rounds": {"won": blue_score}},
+                    {"team_id": "Red", "rounds": {"won": red_score}},
+                ]
+            }
+        }
+
+    assert (
+        match_polling._match_contour_color(payload(13, 9))
+        == match_polling.BLUE_CONTOUR_COLOR
+    )
+    assert (
+        match_polling._match_contour_color(payload(7, 13))
+        == match_polling.RED_CONTOUR_COLOR
+    )
+    assert (
+        match_polling._match_contour_color(payload(12, 12))
+        == match_polling.DRAW_CONTOUR_COLOR
+    )

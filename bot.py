@@ -88,7 +88,9 @@ async def polling_matches():
 
         if polling_result.image is not None:
             filename = "match-scoreboard.png"
-            image_embed = discord.Embed(color=discord.Color.from_str("#ff4655"))
+            image_embed = discord.Embed(
+                color=discord.Color.from_str(polling_result.contour_color)
+            )
             image_embed.set_image(url=f"attachment://{filename}")
             await channel.send(
                 embed=image_embed,
