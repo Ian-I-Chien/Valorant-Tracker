@@ -90,6 +90,16 @@ async def _prepare_subscription(repository, subscription):
         if previous == latest:
             LOGGER.debug("Match %s already processed for %s", latest, account)
             return None
+        if await repository.has_seen_match(subscription.id, latest):
+            LOGGER.info(
+                "Skipping previously delivered match account=%s match_id=%s "
+                "subscription_id=%s current_checkpoint=%s",
+                account,
+                latest,
+                subscription.id,
+                previous,
+            )
+            return None
 
         LOGGER.debug("Fetching new match %s for %s", latest, player_name)
         match.last_match_data = await match.fetch_match()
