@@ -67,6 +67,19 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_owner
 CREATE INDEX IF NOT EXISTS idx_subscriptions_polling
     ON subscriptions (valorant_puuid, last_polled_match_id);
 
+CREATE TABLE IF NOT EXISTS match_delivery_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subscription_id INTEGER NOT NULL,
+    match_id TEXT NOT NULL,
+    delivered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subscription_id)
+        REFERENCES subscriptions(id) ON DELETE CASCADE,
+    UNIQUE (subscription_id, match_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_match_delivery_history_lookup
+    ON match_delivery_history (subscription_id, match_id);
+
 CREATE TABLE IF NOT EXISTS legacy_imports (
     source_path TEXT PRIMARY KEY,
     imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -130,6 +143,21 @@ async def initialize_database(database_file: Path = DATABASE_FILE) -> None:
         )
         await connection.execute(
             "INSERT OR IGNORE INTO schema_migrations(version) VALUES (2)"
+        )
+        # Treat the existing checkpoint as already seen so an older API result
+        # cannot be re-delivered immediately after this migration.
+        await connection.execute(
+            """
+            INSERT OR IGNORE INTO match_delivery_history(
+                subscription_id, match_id
+            )
+            SELECT id, last_polled_match_id
+            FROM subscriptions
+            WHERE last_polled_match_id IS NOT NULL
+            """
+        )
+        await connection.execute(
+            "INSERT OR IGNORE INTO schema_migrations(version) VALUES (3)"
         )
         await connection.commit()
 
@@ -343,7 +371,42 @@ class UserSQLiteDB:
             """,
             (match_id, subscription_id, expected_match_id),
         )
-        return cursor.rowcount == 1
+        if cursor.rowcount != 1:
+            return False
+
+        connection = self._connection()
+        await connection.execute(
+            """
+            INSERT OR IGNORE INTO match_delivery_history(
+                subscription_id, match_id
+            ) VALUES (?, ?)
+            """,
+            (subscription_id, match_id),
+        )
+        await connection.execute(
+            """
+            DELETE FROM match_delivery_history
+            WHERE subscription_id = ?
+              AND id NOT IN (
+                  SELECT id FROM match_delivery_history
+                  WHERE subscription_id = ?
+                  ORDER BY id DESC
+                  LIMIT 20
+              )
+            """,
+            (subscription_id, subscription_id),
+        )
+        return True
+
+    async def has_seen_match(self, subscription_id: int, match_id: str) -> bool:
+        cursor = await self._connection().execute(
+            """
+            SELECT 1 FROM match_delivery_history
+            WHERE subscription_id = ? AND match_id = ?
+            """,
+            (subscription_id, match_id),
+        )
+        return await cursor.fetchone() is not None
 
     async def remove_valorant_account(
         self, dc_id: str, dc_server_id: str, valorant_account: str

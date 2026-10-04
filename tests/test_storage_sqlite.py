@@ -42,6 +42,63 @@ def test_register_checkpoint_and_owner_scoped_delete(tmp_path):
     run(scenario())
 
 
+def test_delivery_history_survives_checkpoint_changes_and_is_bounded(tmp_path):
+    database_file = tmp_path / "tracker.db"
+
+    async def scenario():
+        async with UserSQLiteDB(database_file) as repository:
+            await repository.register_user(
+                "user", "user", "User", "server", "channel", "Ace#AP", "p1"
+            )
+            subscription = (await repository.list_subscriptions())[0]
+            previous = None
+            for number in range(25):
+                match_id = f"match-{number}"
+                assert await repository.update_last_polled_match(
+                    subscription.id, previous, match_id
+                )
+                previous = match_id
+
+            assert await repository.has_seen_match(subscription.id, "match-24")
+            assert await repository.has_seen_match(subscription.id, "match-5")
+            assert not await repository.has_seen_match(subscription.id, "match-4")
+
+            cursor = await repository._connection().execute(
+                """
+                SELECT COUNT(*) FROM match_delivery_history
+                WHERE subscription_id = ?
+                """,
+                (subscription.id,),
+            )
+            assert (await cursor.fetchone())[0] == 20
+
+    run(scenario())
+
+
+def test_existing_checkpoint_is_seeded_into_delivery_history(tmp_path):
+    database_file = tmp_path / "tracker.db"
+
+    async def scenario():
+        async with UserSQLiteDB(database_file) as repository:
+            await repository.register_user(
+                "user", "user", "User", "server", "channel", "Ace#AP", "p1"
+            )
+            subscription = (await repository.list_subscriptions())[0]
+            await repository._connection().execute(
+                """
+                UPDATE subscriptions SET last_polled_match_id = ? WHERE id = ?
+                """,
+                ("legacy-checkpoint", subscription.id),
+            )
+
+        await initialize_database(database_file)
+
+        async with UserSQLiteDB(database_file) as repository:
+            assert await repository.has_seen_match(subscription.id, "legacy-checkpoint")
+
+    run(scenario())
+
+
 def test_legacy_migration_is_idempotent_and_keeps_source(tmp_path):
     json_file = tmp_path / "valorant_data.json"
     database_file = tmp_path / "tracker.db"

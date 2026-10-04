@@ -30,6 +30,9 @@ def test_first_poll_initializes_checkpoint_without_notification(monkeypatch):
         async def list_subscriptions(self):
             return subscriptions
 
+        async def has_seen_match(self, subscription_id, match_id):
+            return False
+
         async def update_last_polled_match(
             self, subscription_id, expected_match_id, match_id
         ):
@@ -81,6 +84,9 @@ def _configure_new_match(monkeypatch, match_class):
 
         async def list_subscriptions(self):
             return subscriptions
+
+        async def has_seen_match(self, subscription_id, match_id):
+            return False
 
     monkeypatch.setattr(match_polling, "UserSQLiteDB", FakeUserSQLiteDB)
     monkeypatch.setattr(match_polling, "Match", match_class)
@@ -148,6 +154,54 @@ def test_new_match_falls_back_to_text_embed(monkeypatch):
     assert result is not None
     assert result.image is None
     assert result.embed is fallback
+
+
+def test_api_order_oscillation_does_not_redeliver_seen_match(monkeypatch):
+    class FakeMatch:
+        fetch_called = False
+
+        def __init__(self, player_name, player_tag):
+            pass
+
+        async def get_last_match_id(self):
+            return "haven-match"
+
+        async def fetch_match(self):
+            self.__class__.fetch_called = True
+            raise AssertionError("a previously delivered match must not be fetched")
+
+    subscriptions = [
+        SubscriptionRecord(
+            id=7,
+            server_id="server-id",
+            discord_user_id="discord-user",
+            valorant_account="player#tag",
+            valorant_puuid="player-puuid",
+            last_polled_match_id="icebox-match",
+        )
+    ]
+
+    class FakeUserSQLiteDB:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        async def list_subscriptions(self):
+            return subscriptions
+
+        async def has_seen_match(self, subscription_id, match_id):
+            return subscription_id == 7 and match_id == "haven-match"
+
+    monkeypatch.setattr(match_polling, "UserSQLiteDB", FakeUserSQLiteDB)
+    monkeypatch.setattr(match_polling, "Match", FakeMatch)
+    userdb_coordination._userdb_lock = None
+
+    result = asyncio.run(match_polling.handle_polling_matches())
+
+    assert result is None
+    assert not FakeMatch.fetch_called
 
 
 def test_match_contour_color_follows_winning_team():
